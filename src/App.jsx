@@ -7,7 +7,7 @@ import ProfileScreen from './screens/ProfileScreen.jsx'
 import PostScreen from './screens/PostScreen.jsx'
 import LogScreen from './screens/LogScreen.jsx'
 
-import { initialReservations, initialLogs } from './data/dummyData.js'
+import { initialLogs } from './data/dummyData.js'
 import { supabase } from './lib/supabase.js'
 
 function toUiExperience(row) {
@@ -88,11 +88,34 @@ export default function App() {
     if (data) setExperiences(data.map(toUiExperience))
   }
 
+  const fetchReservations = async (userId) => {
+    const { data } = await supabase
+      .from('reservations')
+      .select('id, status, experience_id, experiences(title, location, scheduled_at)')
+      .eq('user_id', userId)
+      .in('status', ['reserved', 'joined'])
+      .order('created_at', { ascending: false })
+    if (data) {
+      setReservations(data.map((r) => ({
+        id: r.id,
+        experienceId: r.experience_id,
+        title: r.experiences?.title ?? '',
+        startTime: r.experiences?.scheduled_at ?? '',
+        location: r.experiences?.location ?? '',
+        completed: r.status === 'joined',
+      })))
+    }
+  }
+
   useEffect(() => {
     fetchExperiences()
   }, [])
 
-  const [reservations, setReservations] = useState(initialReservations)
+  useEffect(() => {
+    if (authUser) fetchReservations(authUser.id)
+  }, [authUser])
+
+  const [reservations, setReservations] = useState([])
   const [logs, setLogs] = useState(initialLogs)
   const [logTarget, setLogTarget] = useState(null)
 
@@ -101,11 +124,21 @@ export default function App() {
     [reservations],
   )
 
-  const handleReserve = (experience) => {
+  const handleReserve = async (experience) => {
     if (reservedIds.has(experience.id)) return
+
+    const { data, error } = await supabase.functions.invoke('reserve-experience', {
+      body: { experience_id: experience.id },
+    })
+
+    if (error || data?.error) {
+      alert(data?.error || '予約に失敗しました')
+      return
+    }
+
     setReservations((prev) => [
       {
-        id: `r-${Date.now()}`,
+        id: data.reservation.id,
         experienceId: experience.id,
         title: experience.title,
         startTime: experience.startTime,
