@@ -204,10 +204,10 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Phase 3: 予約（MVP Must）
 
-- [ ] **MVP-301** — Edge Function `reserve-experience`（定員チェック、`reserved_count` 更新、reservation insert） `P0` `BE`
-- [ ] **MVP-302** — フロント: `handleReserve` を Function 呼び出しに変更 `P0` `FE`
-- [ ] **MVP-303** — 二重予約防止（同一 user + experience） `P1` `BE`
-- [ ] **MVP-304** — プロフィール「予約中」タブを DB の `status=reserved` で表示 `P1` `FE`
+- [x] **MVP-301** — Edge Function `reserve-experience`（定員チェック、`reserved_count` 更新、reservation insert） `P0` `BE`
+- [x] **MVP-302** — フロント: `handleReserve` を Function 呼び出しに変更 `P0` `FE`
+- [x] **MVP-303** — 二重予約防止（同一 user + experience） `P1` `BE`
+- [x] **MVP-304** — プロフィール「予約中」タブを DB の `status=reserved` で表示 `P1` `FE`
 
 **現状ギャップ**
 
