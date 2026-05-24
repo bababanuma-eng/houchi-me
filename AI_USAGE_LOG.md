@@ -311,7 +311,22 @@
 
 ## Day 2（2026-05-25）
 
-### #00X
+### #009 Supabase シードデータ実装
+
+- **時刻**：00:14
+- **ツール**：Codex
+- **目的**：MVP-004 として、Supabase のローカル DB reset 後にデモ用データが自動投入される状態を作る。
+- **プロンプト**：
+  ```
+  你按照计划做一下，并检查你做成功了没有，给我展示结果
+  ```
+- **出力サマリ**：
+  - `supabase/config.toml` の `sql_paths = ["./seed.sql"]` に合わせて、`supabase/seed.sql` を新規作成した。
+  - demo user「ミサキ」、体験会 5 件、予約 1 件、参加後ログ 1 件、好奇心マップ 5 件、ポイント履歴 2 件を固定 UUID で投入する SQL を作成した。
+  - `on conflict` を使い、同じ seed を複数回流しても主要データが安定するようにした。
+  - `supabase db reset` はローカルに Supabase CLI がなく、`npx supabase@latest db reset` は Docker daemon 未起動のため実 DB 検証までは未完了。代替として `git diff --check` と `npm run build` を実行した。
+- **評価**：一部採用
+- **採用 / 不採用の理由**：seed SQL 自体は採用。Docker Desktop 未起動で実際の DB reset 検証ができなかったため、実 DB への投入確認は Docker 起動後の追加確認タスクとして残した。
 
 ---
 
