@@ -8,6 +8,7 @@ export default function Button({
   fullWidth = false,
   disabled = false,
   onPress,
+  onClick,
   children,
 }) {
   const variantStyle = {
@@ -27,7 +28,7 @@ export default function Button({
   return (
     <Pressable
       disabled={disabled}
-      onPress={onPress}
+      onPress={onPress ?? onClick}
       style={({ pressed }) => [
         styles.base,
         variantStyle,

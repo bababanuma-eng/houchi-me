@@ -246,6 +246,7 @@ export default function ExperienceCard({ experience, reserved = false, onDetail,
   const singleTapTimerRef = useRef(null)
   const discRotation = useRef(new Animated.Value(0)).current
   const progressScale = useRef(new Animated.Value(0)).current
+  const marqueeTranslate = useRef(new Animated.Value(0)).current
   const handle = `@${toHandle(experience.creator)}`
   const genreTag = `#${(experience.genre || '').replace(/[・·\s]/g, '')}`
   const visual = getGenreVisual(experience.genre)
@@ -263,6 +264,7 @@ export default function ExperienceCard({ experience, reserved = false, onDetail,
   useEffect(() => {
     discRotation.setValue(0)
     progressScale.setValue(0)
+    marqueeTranslate.setValue(0)
 
     const spin = Animated.loop(
       Animated.timing(discRotation, {
@@ -287,27 +289,46 @@ export default function ExperienceCard({ experience, reserved = false, onDetail,
         }),
       ]),
     )
+    const marquee = Animated.loop(
+      Animated.sequence([
+        Animated.timing(marqueeTranslate, {
+          toValue: -140,
+          duration: 12000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(marqueeTranslate, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    )
 
     spin.start()
     progress.start()
+    marquee.start()
 
     return () => {
       spin.stop()
       progress.stop()
+      marquee.stop()
     }
-  }, [discRotation, progressScale])
+  }, [discRotation, marqueeTranslate, progressScale])
 
-  const triggerBigHeart = () => {
+  const triggerBigHeart = (x = '50%', y = '44%') => {
     const id = Date.now()
-    setBigHearts((current) => [...current, id])
+    setBigHearts((current) => [...current, { id, x, y }])
     setTimeout(() => {
-      setBigHearts((current) => current.filter((item) => item !== id))
+      setBigHearts((current) => current.filter((item) => item.id !== id))
     }, 900)
   }
 
-  const handleRootPress = () => {
+  const handleRootPress = (event) => {
     const now = Date.now()
     const delta = now - lastTapRef.current
+    const locationX = event?.nativeEvent?.locationX
+    const locationY = event?.nativeEvent?.locationY
 
     if (delta > 0 && delta < 300) {
       if (singleTapTimerRef.current) {
@@ -315,7 +336,7 @@ export default function ExperienceCard({ experience, reserved = false, onDetail,
         singleTapTimerRef.current = null
       }
       lastTapRef.current = 0
-      triggerBigHeart()
+      triggerBigHeart(locationX ?? '50%', locationY ?? '44%')
       setLiked((value) => {
         if (value) return value
         setLikeCount((count) => count + 1)
@@ -349,8 +370,18 @@ export default function ExperienceCard({ experience, reserved = false, onDetail,
           <Text style={styles.playFlashText}>{playFlash}</Text>
         </View>
       ) : null}
-      {bigHearts.map((id) => (
-        <View key={id} pointerEvents="none" style={styles.bigHeart}>
+      {bigHearts.map((heart) => (
+        <View
+          key={heart.id}
+          pointerEvents="none"
+          style={[
+            styles.bigHeart,
+            {
+              left: typeof heart.x === 'number' ? heart.x : heart.x,
+              top: typeof heart.y === 'number' ? heart.y : heart.y,
+            },
+          ]}
+        >
           <Text style={styles.bigHeartText}>❤️</Text>
         </View>
       ))}
@@ -366,9 +397,13 @@ export default function ExperienceCard({ experience, reserved = false, onDetail,
         </Text>
         <View style={styles.soundRow}>
           <Text style={styles.soundIcon}>♪</Text>
-          <Text style={styles.soundText} numberOfLines={1}>
-            {soundText}
-          </Text>
+          <View style={styles.soundViewport}>
+            <Animated.View style={[styles.soundTrack, { transform: [{ translateX: marqueeTranslate }] }]}>
+              <Text style={styles.soundText}>{soundText}</Text>
+              <Text style={styles.soundSpacer}>   </Text>
+              <Text style={styles.soundText}>{soundText}</Text>
+            </Animated.View>
+          </View>
         </View>
         <View style={styles.ctaWrap}>
           <Pressable
@@ -547,9 +582,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  soundText: {
+  soundViewport: {
     flex: 1,
+    overflow: 'hidden',
+  },
+  soundTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  soundText: {
     color: colors.textPrimary,
+    fontSize: 12,
+  },
+  soundSpacer: {
+    color: 'transparent',
     fontSize: 12,
   },
   ctaWrap: {
@@ -676,8 +722,6 @@ const styles = StyleSheet.create({
   },
   bigHeart: {
     position: 'absolute',
-    left: '50%',
-    top: '44%',
     transform: [{ translateX: -34 }, { translateY: -34 }],
   },
   bigHeartText: {

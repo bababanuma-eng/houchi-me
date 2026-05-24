@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { colors } from '../styles/tokens'
 
-export default function Badge({ tone = 'soft', size = 'md', children }) {
+export default function Badge({ tone = 'soft', size = 'md', icon, children }) {
   const toneStyle = {
     soft: styles.soft,
     accent: styles.accent,
@@ -19,6 +19,7 @@ export default function Badge({ tone = 'soft', size = 'md', children }) {
 
   return (
     <View style={[styles.base, size === 'sm' ? styles.sm : styles.md, toneStyle]}>
+      {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
       <Text style={[styles.text, textToneStyle]}>{children}</Text>
     </View>
   )
@@ -28,6 +29,8 @@ const styles = StyleSheet.create({
   base: {
     borderRadius: 999,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sm: {
     paddingHorizontal: 8,
@@ -55,6 +58,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.9,
+  },
+  iconWrap: {
+    marginRight: 4,
   },
   softText: {
     color: colors.accent,
