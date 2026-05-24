@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import BottomTabBar from './components/BottomTabBar.jsx'
@@ -13,10 +13,30 @@ import {
   initialReservations,
   initialLogs,
 } from './data/dummyData.js'
+import { supabase } from './lib/supabase.js'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home')
+  const [authUser, setAuthUser] = useState(null)
   const [user, setUser] = useState(initialUser)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setAuthUser(session.user)
+      } else {
+        supabase.auth.signInAnonymously().then(({ data }) => {
+          setAuthUser(data.user)
+        })
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
   const [reservations, setReservations] = useState(initialReservations)
   const [logs, setLogs] = useState(initialLogs)
   const [userPosts, setUserPosts] = useState([])
