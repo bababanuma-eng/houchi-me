@@ -3,16 +3,6 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - ci/**
-      - feat/**
-      - fix/**
-      - hotfix/**
-      - refactor/**
-      - test/**
-      - build/**
-      - chore/**
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -25,8 +15,8 @@ jobs:
       run:
         working-directory: frontend
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://example.supabase.co' }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'dummy-anon-key' }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

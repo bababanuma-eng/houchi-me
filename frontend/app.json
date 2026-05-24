@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Curio Meet",
+    "slug": "curio-meet",
+    "scheme": "curio-meet",
+    "platforms": ["ios", "android", "web"],
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "web": {
+      "bundler": "metro"
+    },
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

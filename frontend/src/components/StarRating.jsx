@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+
+import { colors } from '../styles/tokens'
 
 export default function StarRating({
   value = 0,
@@ -8,53 +9,45 @@ export default function StarRating({
   readOnly = false,
   size = 'md',
 }) {
-  const [hoverIndex, setHoverIndex] = useState(-1);
-
-  const sizeClasses = {
-    md: 'w-8 h-8 text-3xl',
-    lg: 'w-10 h-10 text-4xl',
-  };
-
-  const stars = Array.from({ length: max });
-
-  const handleClick = (index) => {
-    if (readOnly) return;
-    if (onChange) onChange(index + 1);
-  };
-
-  const handleEnter = (index) => {
-    if (readOnly) return;
-    setHoverIndex(index);
-  };
-
-  const handleLeave = () => {
-    if (readOnly) return;
-    setHoverIndex(-1);
-  };
+  const fontSize = size === 'lg' ? 32 : 26
+  const lineHeight = size === 'lg' ? 40 : 34
 
   return (
-    <div className="inline-flex items-center gap-1">
-      {stars.map((_, i) => {
-        const activeIndex = hoverIndex >= 0 ? hoverIndex : value - 1;
-        const filled = i <= activeIndex;
-
+    <View style={styles.row}>
+      {Array.from({ length: max }).map((_, index) => {
+        const filled = index < value
         return (
-          <motion.span
-            key={i}
-            role={readOnly ? undefined : 'button'}
-            onClick={() => handleClick(i)}
-            onMouseEnter={() => handleEnter(i)}
-            onMouseLeave={handleLeave}
-            whileTap={readOnly ? undefined : { scale: [1, 1.4, 1] }}
-            transition={{ duration: 0.35 }}
-            className={`${sizeClasses[size]} inline-flex items-center justify-center leading-none select-none ${
-              readOnly ? 'cursor-default' : 'cursor-pointer'
-            } ${filled ? 'text-accent' : 'text-text-muted'}`}
+          <Pressable
+            key={index}
+            disabled={readOnly}
+            onPress={() => onChange?.(index + 1)}
+            style={({ pressed }) => [styles.starPressable, pressed && styles.pressed]}
           >
-            ★
-          </motion.span>
-        );
+            <Text style={[styles.star, { fontSize, lineHeight }, filled ? styles.filled : styles.empty]}>
+              ★
+            </Text>
+          </Pressable>
+        )
       })}
-    </div>
-  );
+    </View>
+  )
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  starPressable: {
+    padding: 2,
+  },
+  pressed: {
+    transform: [{ scale: 0.92 }],
+  },
+  filled: {
+    color: colors.accent,
+  },
+  empty: {
+    color: colors.textMuted,
+  },
+})

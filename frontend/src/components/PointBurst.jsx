@@ -1,71 +1,62 @@
-import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 
-export default function PointBurst({
-  show,
-  points,
-  label,
-  onDone,
-  duration = 1600,
-}) {
+import { colors } from '../styles/tokens'
+
+export default function PointBurst({ show, points = 0, label, onDone, duration = 1600 }) {
   useEffect(() => {
-    if (!show) return;
-    const t = setTimeout(() => {
-      if (onDone) onDone();
-    }, duration);
-    return () => clearTimeout(t);
-  }, [show, duration, onDone]);
+    if (!show) return undefined
+    const timer = setTimeout(() => onDone?.(), duration)
+    return () => clearTimeout(timer)
+  }, [duration, onDone, show])
+
+  if (!show) return null
 
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          key="point-burst"
-          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          {/* Ripple rings */}
-          {[0, 1, 2].map((i) => (
-            <motion.span
-              key={`ring-${i}`}
-              className="absolute w-40 h-40 rounded-full border-2 border-accent"
-              initial={{ scale: 0, opacity: 0.6 }}
-              animate={{ scale: 3, opacity: 0 }}
-              transition={{
-                duration: 1.2,
-                delay: i * 0.18,
-                ease: 'easeOut',
-              }}
-            />
-          ))}
-
-          {/* Core text */}
-          <motion.div
-            className="relative flex flex-col items-center"
-            initial={{ opacity: 0, scale: 0.4, y: 40 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.1, y: -120 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 18 }}
-          >
-            <span
-              className="font-display text-accent text-[120px] leading-none tracking-wider"
-              style={{
-                textShadow:
-                  '0 0 24px rgba(255,92,0,0.85), 0 0 60px rgba(255,92,0,0.55)',
-              }}
-            >
-              +{points}pt
-            </span>
-            {label && (
-              <span className="mt-2 text-sm text-text-primary font-bold tracking-wide">
-                {label}
-              </span>
-            )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+    <View pointerEvents="none" style={styles.overlay}>
+      {[0, 1, 2].map((index) => (
+        <View key={index} style={[styles.ring, { transform: [{ scale: 1 + index * 0.45 }], opacity: 0.35 - index * 0.08 }]} />
+      ))}
+      <View style={styles.content}>
+        <Text style={styles.points}>+{points}pt</Text>
+        {label ? <Text style={styles.label}>{label}</Text> : null}
+      </View>
+    </View>
+  )
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ring: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
+  content: {
+    alignItems: 'center',
+  },
+  points: {
+    color: colors.accent,
+    fontSize: 68,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(255,92,0,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 24,
+  },
+  label: {
+    marginTop: 8,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+})

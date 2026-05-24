@@ -1,129 +1,171 @@
-import { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import ExperienceCard from '../components/ExperienceCard.jsx';
-import ExperienceModal from '../components/ExperienceModal.jsx';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useMemo, useState } from 'react'
+import { Feather } from '@expo/vector-icons'
+
+import ExperienceCard from '../components/ExperienceCard'
+import ExperienceModal from '../components/ExperienceModal'
+import { colors } from '../styles/tokens'
+import { layout } from '../styles/layout'
 
 export default function HomeScreen({
   experiences = [],
   reservedIds = new Set(),
   onReserve = () => {},
 }) {
-  const containerRef = useRef(null);
-  const [openExperience, setOpenExperience] = useState(null);
-  const [justReservedId, setJustReservedId] = useState(null);
-  const [feedTab, setFeedTab] = useState('recommend');
+  const [openExperience, setOpenExperience] = useState(null)
+  const [justReservedId, setJustReservedId] = useState(null)
+  const [feedTab, setFeedTab] = useState('recommend')
+  const [viewportHeight, setViewportHeight] = useState(layout.frameHeight)
 
-  const handleDetail = (exp) => {
-    setJustReservedId(null);
-    setOpenExperience(exp);
-  };
+  const data = useMemo(() => experiences, [experiences])
 
-  const handleQuickReserve = (exp) => {
-    // 「予約する」直接タップ → モーダルを開き、完了状態として表示
-    setJustReservedId(exp.id);
-    setOpenExperience(exp);
-    onReserve(exp);
-  };
+  const handleDetail = (experience) => {
+    setJustReservedId(null)
+    setOpenExperience(experience)
+  }
 
-  const handleModalReserve = (exp) => {
-    onReserve(exp);
-  };
+  const handleQuickReserve = (experience) => {
+    setJustReservedId(experience.id)
+    setOpenExperience(experience)
+    onReserve(experience)
+  }
 
   const handleClose = () => {
-    setOpenExperience(null);
-    setJustReservedId(null);
-  };
+    setOpenExperience(null)
+    setJustReservedId(null)
+  }
 
   const isOpenAlready =
-    openExperience &&
-    (reservedIds.has(openExperience.id) || justReservedId === openExperience.id);
+    !!openExperience &&
+    (reservedIds.has(openExperience.id) || justReservedId === openExperience.id)
 
   return (
-    <div className="relative w-full h-full bg-black">
-      <div
-        ref={containerRef}
-        className="relative w-full h-full overflow-y-auto feed-snap no-scrollbar bg-black"
-      >
-        {experiences.map((exp) => (
-          <ExperienceCard
-            key={exp.id}
-            experience={exp}
-            reserved={reservedIds.has(exp.id)}
-            onDetail={() => handleDetail(exp)}
-            onReserve={() => handleQuickReserve(exp)}
-          />
-        ))}
-      </div>
-
-      {/* 上部グラデーション（ヘッダーの視認性確保） */}
-      <div className="absolute top-0 left-0 right-0 h-24 z-20 pointer-events-none bg-gradient-to-b from-black/50 to-transparent" />
-
-      {/* TikTok 風 トップピルヘッダー */}
-      <div className="absolute top-0 left-0 right-0 z-30 pt-10 pb-3 px-4 flex items-center justify-center gap-6 pointer-events-auto">
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setFeedTab('follow')}
-          className="relative cursor-pointer"
-        >
-          <span
-            className={`text-[15px] font-bold tracking-wide ${
-              feedTab === 'follow' ? 'text-white' : 'text-white/55'
-            }`}
-          >
-            フォロー中
-          </span>
-          {feedTab === 'follow' && (
-            <motion.span
-              layoutId="feed-tab"
-              className="absolute left-1/2 -translate-x-1/2 mt-1 h-[3px] w-5 bg-white rounded-full"
+    <View
+      style={styles.container}
+      onLayout={(event) => {
+        const nextHeight = Math.round(event.nativeEvent.layout.height)
+        if (nextHeight > 0 && nextHeight !== viewportHeight) {
+          setViewportHeight(nextHeight)
+        }
+      }}
+    >
+      <FlatList
+        data={data}
+        pagingEnabled
+        snapToInterval={viewportHeight}
+        decelerationRate="fast"
+        showsVerticalScrollIndicator={false}
+        keyExtractor={(item) => String(item.id)}
+        getItemLayout={(_, index) => ({
+          length: viewportHeight,
+          offset: viewportHeight * index,
+          index,
+        })}
+        renderItem={({ item }) => (
+          <View style={[styles.page, { height: viewportHeight }]}>
+            <ExperienceCard
+              experience={item}
+              reserved={reservedIds.has(item.id)}
+              onDetail={() => handleDetail(item)}
+              onReserve={() => handleQuickReserve(item)}
             />
-          )}
-        </motion.button>
+          </View>
+        )}
+      />
 
-        <span className="text-white/30 text-xs">|</span>
+      <View style={styles.headerGradient} pointerEvents="none" />
+      <SafeAreaView style={styles.header} pointerEvents="box-none">
+        <View style={styles.headerInner}>
+          <View style={styles.tabPill}>
+            <Pressable onPress={() => setFeedTab('follow')}>
+              <Text style={[styles.tabText, feedTab === 'follow' && styles.activeTabText]}>フォロー中</Text>
+              {feedTab === 'follow' ? <View style={styles.activeUnderline} /> : null}
+            </Pressable>
+            <Text style={styles.tabDivider}>|</Text>
+            <Pressable onPress={() => setFeedTab('recommend')}>
+              <Text style={[styles.tabText, feedTab === 'recommend' && styles.activeTabText]}>おすすめ</Text>
+              {feedTab === 'recommend' ? <View style={styles.activeUnderline} /> : null}
+            </Pressable>
+          </View>
+          <Pressable style={styles.searchButton}>
+            <Feather name="search" size={20} color="rgba(255,255,255,0.9)" />
+          </Pressable>
+        </View>
+      </SafeAreaView>
 
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setFeedTab('recommend')}
-          className="relative cursor-pointer"
-        >
-          <span
-            className={`text-[15px] font-bold tracking-wide ${
-              feedTab === 'recommend' ? 'text-white' : 'text-white/55'
-            }`}
-          >
-            おすすめ
-          </span>
-          {feedTab === 'recommend' && (
-            <motion.span
-              layoutId="feed-tab"
-              className="absolute left-1/2 -translate-x-1/2 mt-1 h-[3px] w-5 bg-white rounded-full"
-            />
-          )}
-        </motion.button>
-      </div>
-
-      {/* 右上：検索アイコン */}
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.9 }}
-        onClick={() => {}}
-        className="absolute top-10 right-4 z-30 text-white/90 text-xl cursor-pointer"
-        aria-label="検索"
-      >
-        🔍
-      </motion.button>
-
-      {/* 詳細／予約完了モーダル */}
       <ExperienceModal
         experience={openExperience}
         open={!!openExperience}
         onClose={handleClose}
-        onReserve={handleModalReserve}
+        onReserve={(experience) => onReserve(experience)}
         alreadyReserved={isOpenAlready}
       />
-    </div>
-  );
+    </View>
+  )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  page: {
+    width: '100%',
+  },
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 96,
+    zIndex: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  headerInner: {
+    paddingTop: 8,
+    paddingBottom: 12,
+    paddingHorizontal: layout.screenPadding,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  tabText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  activeTabText: {
+    color: colors.textPrimary,
+  },
+  activeUnderline: {
+    alignSelf: 'center',
+    marginTop: 4,
+    width: 20,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: '#fff',
+  },
+  tabDivider: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 12,
+  },
+  searchButton: {
+    position: 'absolute',
+    right: layout.screenPadding,
+    top: 8,
+  },
+})

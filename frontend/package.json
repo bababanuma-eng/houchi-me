@@ -1,24 +1,35 @@
 {
-  "name": "curio-meet-mock",
+  "name": "curio-meet-mobile",
   "private": true,
-  "version": "0.1.0",
-  "type": "module",
+  "version": "0.2.0",
+  "main": "expo/AppEntry",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build": "expo export --platform web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.23.1",
     "@supabase/supabase-js": "^2.106.1",
-    "framer-motion": "^11.3.19",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "expo": "^51.0.28",
+    "expo-av": "~14.0.7",
+    "expo-image-picker": "~15.0.7",
+    "expo-linear-gradient": "~13.0.2",
+    "@expo/metro-runtime": "~3.2.3",
+    "@opentelemetry/api": "^1.9.0",
+    "expo-status-bar": "~1.12.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "~3.31.1",
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-web": "~0.19.13",
+    "react-native-webview": "13.8.6"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.41",
-    "tailwindcss": "^3.4.10",
-    "vite": "^5.4.2"
+    "@babel/core": "^7.25.2"
   }
 }

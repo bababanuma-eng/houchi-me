@@ -1,35 +1,71 @@
-import { motion } from 'framer-motion';
+import { StyleSheet, Text, View } from 'react-native'
 
-export default function Badge({
-  tone = 'soft',
-  size = 'md',
-  icon,
-  children,
-}) {
-  const toneClasses = {
-    soft: 'bg-accent-soft text-accent',
-    accent: 'bg-accent text-black',
-    outline: 'border border-line text-text-secondary bg-transparent',
-    success: 'bg-success/10 text-success',
-  };
+import { colors } from '../styles/tokens'
 
-  const sizeClasses = {
-    sm: 'text-[10px] px-2 py-0.5',
-    md: 'text-xs px-3 py-1',
-  };
+export default function Badge({ tone = 'soft', size = 'md', children }) {
+  const toneStyle = {
+    soft: styles.soft,
+    accent: styles.accent,
+    outline: styles.outline,
+    success: styles.success,
+  }[tone]
 
-  const base =
-    'rounded-full font-bold inline-flex items-center gap-1 tracking-wider uppercase';
+  const textToneStyle = {
+    soft: styles.softText,
+    accent: styles.accentText,
+    outline: styles.outlineText,
+    success: styles.successText,
+  }[tone]
 
   return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 22 }}
-      className={`${base} ${toneClasses[tone]} ${sizeClasses[size]}`}
-    >
-      {icon && <span className="inline-flex items-center">{icon}</span>}
-      {children}
-    </motion.span>
-  );
+    <View style={[styles.base, size === 'sm' ? styles.sm : styles.md, toneStyle]}>
+      <Text style={[styles.text, textToneStyle]}>{children}</Text>
+    </View>
+  )
 }
+
+const styles = StyleSheet.create({
+  base: {
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  sm: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  md: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  soft: {
+    backgroundColor: colors.accentSoft,
+  },
+  accent: {
+    backgroundColor: colors.accent,
+  },
+  outline: {
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  success: {
+    backgroundColor: 'rgba(0, 229, 160, 0.14)',
+  },
+  text: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+  },
+  softText: {
+    color: colors.accent,
+  },
+  accentText: {
+    color: '#000',
+  },
+  outlineText: {
+    color: colors.textSecondary,
+  },
+  successText: {
+    color: colors.success,
+  },
+})

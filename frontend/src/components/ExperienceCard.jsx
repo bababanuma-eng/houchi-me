@@ -1,445 +1,689 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { getGenreVisual } from '../styles/tokens.js';
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Video, ResizeMode } from 'expo-av'
+import { WebView } from 'react-native-webview'
+import { Ionicons, Feather } from '@expo/vector-icons'
 
-// 決定論的なダミーカウント生成（experience.id をシードに）
+import { colors, getGenreVisual } from '../styles/tokens'
+
 function seededInt(seed, min, max) {
-  let h = 0;
-  const s = String(seed);
-  for (let i = 0; i < s.length; i++) {
-    h = (h * 31 + s.charCodeAt(i)) | 0;
+  let h = 0
+  const s = String(seed)
+  for (let i = 0; i < s.length; i += 1) {
+    h = (h * 31 + s.charCodeAt(i)) | 0
   }
-  const v = Math.abs(h);
-  return min + (v % (max - min + 1));
+  const value = Math.abs(h)
+  return min + (value % (max - min + 1))
 }
 
-function formatCount(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-  return String(n);
+function formatCount(count) {
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
+  return String(count)
 }
 
 function toHandle(name) {
-  if (!name) return 'user';
+  if (!name) return 'user'
   return name
     .toLowerCase()
     .replace(/[\s　・·]/g, '_')
-    .replace(/[^a-z0-9_]/g, '');
+    .replace(/[^a-z0-9_]/g, '')
 }
 
-export default function ExperienceCard({
-  experience,
-  reserved = false,
-  onDetail,
-  // eslint-disable-next-line no-unused-vars
-  onReserve,
-}) {
-  const visual = getGenreVisual(experience.genre);
+function getStreamUrl(mediaUrl) {
+  if (!mediaUrl?.includes('cloudflarestream.com')) return null
+  const separator = mediaUrl.includes('?') ? '&' : '?'
+  return `${mediaUrl}${separator}autoplay=true&muted=true&loop=true&controls=false&preload=true&letterboxColor=transparent`
+}
 
-  // 初期カウント（idでばらつかせる）
-  const initialLikes = seededInt(experience.id + 'l', 8000, 98000);
-  const initialComments = seededInt(experience.id + 'c', 80, 980);
-  const initialSaves = seededInt(experience.id + 's', 500, 4500);
-  const initialShares = seededInt(experience.id + 'sh', 40, 480);
+function ensureStreamSdk() {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.Stream) return Promise.resolve(window.Stream)
 
-  const [followed, setFollowed] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(initialLikes);
-  const [saved, setSaved] = useState(false);
-  const [saveCount, setSaveCount] = useState(initialSaves);
-  const [shareCount, setShareCount] = useState(initialShares);
+  if (window.__streamSdkPromise) return window.__streamSdkPromise
 
-  // ダブルタップ大ハート
-  const lastTapRef = useRef(0);
-  const [bigHearts, setBigHearts] = useState([]);
+  window.__streamSdkPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-stream-sdk="true"]')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.Stream), { once: true })
+      existing.addEventListener('error', reject, { once: true })
+      return
+    }
 
-  // シングルタップで再生/停止アイコンフラッシュ
-  const [playFlash, setPlayFlash] = useState(null); // {key, icon}
-  const [paused, setPaused] = useState(false);
-  const singleTapTimerRef = useRef(null);
+    const script = document.createElement('script')
+    script.src = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
+    script.async = true
+    script.dataset.streamSdk = 'true'
+    script.onload = () => resolve(window.Stream)
+    script.onerror = reject
+    document.body.appendChild(script)
+  })
+
+  return window.__streamSdkPromise
+}
+
+function CloudflareStreamPlayer({ experience, paused }) {
+  const streamUrl = getStreamUrl(experience.thumbnailUrl)
+  const iframeRef = useRef(null)
+  const webViewRef = useRef(null)
+  const playerRef = useRef(null)
 
   useEffect(() => {
+    if (Platform.OS !== 'web' || !streamUrl) return undefined
+
+    let disposed = false
+
+    ensureStreamSdk()
+      .then((StreamCtor) => {
+        if (disposed || !StreamCtor || !iframeRef.current) return
+        const player = StreamCtor(iframeRef.current)
+        player.muted = true
+        player.loop = true
+        playerRef.current = player
+        if (paused) {
+          player.pause()
+          return
+        }
+        player.play().catch(() => {
+          player.muted = true
+          player.play().catch(() => {})
+        })
+      })
+      .catch(() => {})
+
     return () => {
-      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
-    };
-  }, []);
-
-  const handleLikeToggle = () => {
-    setIsLiked((prev) => {
-      const next = !prev;
-      setLikeCount((c) => c + (next ? 1 : -1));
-      return next;
-    });
-  };
-
-  const handleSaveToggle = () => {
-    setSaved((prev) => {
-      const next = !prev;
-      setSaveCount((c) => c + (next ? 1 : -1));
-      return next;
-    });
-  };
-
-  const handleShare = () => {
-    setShareCount((c) => c + 1);
-  };
-
-  // ルート領域へのタップ（ダブルタップで大ハート、シングルで再生/停止）
-  const handleRootClick = (e) => {
-    // ボタン等の操作要素はネイティブハンドラに任せる
-    if (e.target.closest('[data-stop]')) return;
-
-    const now = Date.now();
-    const delta = now - lastTapRef.current;
-
-    if (delta < 300 && delta > 0) {
-      // ダブルタップ
-      if (singleTapTimerRef.current) {
-        clearTimeout(singleTapTimerRef.current);
-        singleTapTimerRef.current = null;
-      }
-      lastTapRef.current = 0;
-
-      // 位置（中央寄りだがタップ位置で微調整）
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const id = now;
-      setBigHearts((arr) => [...arr, { id, x, y }]);
-      setTimeout(() => {
-        setBigHearts((arr) => arr.filter((h) => h.id !== id));
-      }, 950);
-
-      if (!isLiked) {
-        setIsLiked(true);
-        setLikeCount((c) => c + 1);
-      }
-    } else {
-      lastTapRef.current = now;
-      // シングルタップ確定は300ms後
-      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
-      singleTapTimerRef.current = setTimeout(() => {
-        setPaused((p) => {
-          const next = !p;
-          setPlayFlash({ key: Date.now(), icon: next ? '❚❚' : '▶︎' });
-          return next;
-        });
-        singleTapTimerRef.current = null;
-      }, 310);
+      disposed = true
+      playerRef.current = null
     }
-  };
+  }, [paused, streamUrl])
 
-  const handle = '@' + toHandle(experience.creator);
-  const genreTag = '#' + (experience.genre || '').replace(/[・·\s]/g, '');
-  const hashtags = [
-    genreTag,
-    '#体験会',
-    experience.isBeginnerFriendly ? '#初心者歓迎' : null,
-    experience.isFirstTimeFree ? '#初回無料' : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  useEffect(() => {
+    if (!streamUrl) return
+
+    if (Platform.OS === 'web') {
+      const player = playerRef.current
+      if (!player) return
+      if (paused) {
+        player.pause()
+        return
+      }
+      player.play().catch(() => {
+        player.muted = true
+        player.play().catch(() => {})
+      })
+      return
+    }
+
+    if (!webViewRef.current) return
+    const command = paused ? 'pause' : 'play'
+    webViewRef.current.injectJavaScript(`
+      if (window.__streamPlayer) {
+        try {
+          window.__streamPlayer.${command}();
+          if (!${paused ? 'true' : 'false'}) {
+            window.__streamPlayer.muted = true;
+          }
+        } catch (e) {}
+      }
+      true;
+    `)
+  }, [paused, streamUrl])
+
+  if (!streamUrl) return null
+
+  if (Platform.OS === 'web') {
+    return (
+      <iframe
+        ref={iframeRef}
+        src={streamUrl}
+        title={experience.title}
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+        style={styles.streamFrame}
+      />
+    )
+  }
+
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+        <style>
+          html, body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; }
+          #player-wrap { position: fixed; inset: 0; }
+          iframe { border: 0; width: 100%; height: 100%; }
+        </style>
+      </head>
+      <body>
+        <div id="player-wrap">
+          <iframe
+            id="stream-player"
+            src="${streamUrl}"
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowfullscreen="true"
+          ></iframe>
+        </div>
+        <script src="https://embed.cloudflarestream.com/embed/sdk.latest.js"></script>
+        <script>
+          const init = () => {
+            if (!window.Stream) return setTimeout(init, 50);
+            const iframe = document.getElementById('stream-player');
+            const player = window.Stream(iframe);
+            window.__streamPlayer = player;
+            player.muted = true;
+            player.loop = true;
+            player.play && player.play().catch(() => {});
+          };
+          init();
+        </script>
+      </body>
+    </html>
+  `
 
   return (
-    <div
-      className="relative w-full h-[100dvh] min-h-[100vh] overflow-hidden bg-black select-none"
-      onClick={handleRootClick}
-    >
-      {/* 1. フルブリード背景 */}
-      {experience.thumbnailUrl ? (
-        experience.thumbnailUrl.includes('iframe.cloudflarestream.com') ? (
-          <iframe
-            src={`${experience.thumbnailUrl}?autoplay=true&muted=true&loop=true&controls=false`}
-            className="absolute inset-0 w-full h-full"
-            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        ) : (
-          <img
-            src={experience.thumbnailUrl}
-            className="absolute inset-0 w-full h-full object-cover"
-            alt={experience.title}
-          />
-        )
-      ) : (
-        <>
-          <div
-            className="absolute inset-0"
-            style={{ background: visual.gradient }}
-          />
-          <motion.div
-            className="text-[260px] opacity-25 select-none absolute top-[18%] left-1/2 -translate-x-1/2 leading-none pointer-events-none"
-            animate={{ y: [0, -12, 0], rotate: [0, 2, -2, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            {visual.emoji}
-          </motion.div>
-        </>
-      )}
-
-      {/* 暗化グラデ：上 */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent pointer-events-none" />
-      {/* 暗化グラデ：下 */}
-      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
-
-      {/* 2. 右レール（TikTokアイコン縦列） */}
-      <div className="absolute right-1.5 bottom-28 flex flex-col gap-4 z-20 items-center">
-        {/* (a) アバター + フォロー */}
-        <motion.button
-          data-stop
-          whileTap={{ scale: 0.85 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setFollowed((v) => !v);
-          }}
-          className="relative"
-          aria-label="follow"
-        >
-          <div
-            className="w-12 h-12 rounded-full bg-bg-elevated border-2 border-white flex items-center justify-center text-2xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
-            style={{ background: visual.gradient }}
-          >
-            <span className="leading-none">{experience.creatorAvatar}</span>
-          </div>
-          <AnimatePresence>
-            {!followed ? (
-              <motion.span
-                key="plus"
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FE2C55] flex items-center justify-center text-white text-xs font-bold shadow"
-              >
-                +
-              </motion.span>
-            ) : (
-              <motion.span
-                key="check"
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-white flex items-center justify-center text-[#FE2C55] text-[10px] font-bold shadow"
-              >
-                ✓
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.button>
-
-        {/* (b) ハート */}
-        <motion.button
-          data-stop
-          whileTap={{ scale: 0.85 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleLikeToggle();
-          }}
-          className="flex flex-col items-center"
-          aria-label="like"
-        >
-          <motion.span
-            key={isLiked ? 'liked' : 'unliked'}
-            animate={isLiked ? { scale: [1, 1.4, 0.9, 1] } : { scale: 1 }}
-            transition={{ duration: 0.45 }}
-            className="text-[36px] leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
-          >
-            {isLiked ? '❤️' : '🤍'}
-          </motion.span>
-          <span className="text-xs font-bold text-white mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            {formatCount(likeCount)}
-          </span>
-        </motion.button>
-
-        {/* (c) コメント */}
-        <motion.button
-          data-stop
-          whileTap={{ scale: 0.85 }}
-          onClick={(e) => e.stopPropagation()}
-          className="flex flex-col items-center"
-          aria-label="comment"
-        >
-          <span className="text-[34px] leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-            💬
-          </span>
-          <span className="text-xs font-bold text-white mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            {formatCount(initialComments)}
-          </span>
-        </motion.button>
-
-        {/* (d) ブックマーク */}
-        <motion.button
-          data-stop
-          whileTap={{ scale: 0.85 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSaveToggle();
-          }}
-          className="flex flex-col items-center"
-          aria-label="save"
-        >
-          <motion.span
-            animate={saved ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-            transition={{ duration: 0.35 }}
-            className={`text-[34px] leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] ${
-              saved ? 'text-accent' : 'grayscale'
-            }`}
-            style={saved ? { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' } : {}}
-          >
-            🔖
-          </motion.span>
-          <span className="text-xs font-bold text-white mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            {formatCount(saveCount)}
-          </span>
-        </motion.button>
-
-        {/* (e) シェア */}
-        <motion.button
-          data-stop
-          whileTap={{ scale: 0.85 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleShare();
-          }}
-          className="flex flex-col items-center"
-          aria-label="share"
-        >
-          <span className="text-[34px] leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-            ↗
-          </span>
-          <span className="text-xs font-bold text-white mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            {formatCount(shareCount)}
-          </span>
-        </motion.button>
-
-        {/* (f) スピニングディスク */}
-        <motion.div
-          className="w-10 h-10 rounded-full overflow-hidden border border-white/30 flex items-center justify-center mt-2 bg-cover bg-center"
-          style={{ backgroundImage: visual.gradient }}
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 6, ease: 'linear' }}
-        >
-          <span className="text-xl leading-none">{visual.emoji}</span>
-        </motion.div>
-      </div>
-
-      {/* 3. 左下キャプションエリア */}
-      <div className="absolute bottom-24 left-3 right-20 z-20 flex flex-col gap-1">
-        <div className="text-base font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-          {handle}
-        </div>
-        <div className="text-sm font-bold text-white leading-snug [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
-          {experience.title}
-        </div>
-        <div className="text-xs text-white/85 leading-relaxed line-clamp-2 [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-          {experience.description}
-        </div>
-        <div className="text-xs font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-          {hashtags}
-        </div>
-        {/* ♪サウンド行 */}
-        <div className="flex items-center gap-1.5 text-xs text-white mt-1 [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-          <motion.span
-            className="text-sm leading-none"
-            animate={{ scale: [1, 1.15, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            ♪
-          </motion.span>
-          <div className="overflow-hidden max-w-[60vw] whitespace-nowrap">
-            <motion.div
-              className="inline-block whitespace-nowrap"
-              animate={{ x: ['0%', '-50%'] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
-            >
-              <span className="pr-8">
-                {experience.creator} の体験 · オリジナルサウンド
-              </span>
-              <span className="pr-8">
-                {experience.creator} の体験 · オリジナルサウンド
-              </span>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* CTAピル — キャプション末尾に内包してタイトル重なりを回避 */}
-        <div className="mt-2" data-stop>
-          <motion.button
-            whileTap={{ scale: 0.94 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail && onDetail();
-            }}
-            className={`rounded-md px-3 py-2 text-xs font-bold inline-flex items-center gap-1.5 shadow backdrop-blur ${
-              reserved
-                ? 'bg-accent text-black'
-                : 'bg-white/90 text-black'
-            }`}
-          >
-            {reserved ? (
-              <>
-                <span>✓</span>
-                <span>予約済み</span>
-              </>
-            ) : (
-              <>
-                <span>⚡</span>
-                <span>予約する ▸</span>
-              </>
-            )}
-          </motion.button>
-        </div>
-      </div>
-
-      {/* 5. プログレスバー */}
-      <div className="absolute bottom-16 left-0 right-0 h-[2px] bg-white/15 z-20 overflow-hidden">
-        <motion.div
-          className="h-full w-full bg-white origin-left"
-          animate={{ scaleX: [0, 1] }}
-          transition={{ duration: 18, ease: 'linear', repeat: Infinity }}
-        />
-      </div>
-
-      {/* 6. ダブルタップ大ハート */}
-      <AnimatePresence>
-        {bigHearts.map((h) => (
-          <motion.span
-            key={h.id}
-            initial={{ scale: 0, opacity: 0, rotate: -15 }}
-            animate={{
-              scale: [0, 1.3, 1, 0.95],
-              opacity: [0, 1, 1, 0],
-              rotate: [-15, 0, 0, 5],
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9 }}
-            className="absolute text-[160px] leading-none pointer-events-none z-30 select-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
-            style={{
-              left: h.x,
-              top: h.y,
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            ❤️
-          </motion.span>
-        ))}
-      </AnimatePresence>
-
-      {/* 7. シングルタップ再生/停止フラッシュ */}
-      <AnimatePresence>
-        {playFlash && (
-          <motion.span
-            key={playFlash.key}
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: [0, 1, 1, 0] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            onAnimationComplete={() => setPlayFlash(null)}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-7xl text-white/90 pointer-events-none z-30 select-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
-          >
-            {playFlash.icon}
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+    <WebView
+      ref={webViewRef}
+      source={{ html }}
+      style={StyleSheet.absoluteFill}
+      allowsInlineMediaPlayback
+      mediaPlaybackRequiresUserAction={false}
+      scrollEnabled={false}
+      originWhitelist={['*']}
+    />
+  )
 }
+
+function BackgroundMedia({ experience, paused }) {
+  const visual = getGenreVisual(experience.genre)
+  const mediaUrl = experience.thumbnailUrl
+
+  if (!mediaUrl) {
+    return (
+      <LinearGradient colors={visual.colors} style={StyleSheet.absoluteFill}>
+        <View style={styles.fallbackCenter}>
+          <Text style={styles.fallbackEmoji}>{visual.emoji}</Text>
+        </View>
+      </LinearGradient>
+    )
+  }
+
+  if (mediaUrl.includes('iframe.cloudflarestream.com')) {
+    return <CloudflareStreamPlayer experience={experience} paused={paused} />
+  }
+
+  if (/\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl)) {
+    return (
+      <Video
+        source={{ uri: mediaUrl }}
+        style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay={!paused}
+        isLooping
+        isMuted
+      />
+    )
+  }
+
+  return <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+}
+
+export default function ExperienceCard({ experience, reserved = false, onDetail, onReserve }) {
+  const initialLikeCount = useMemo(() => seededInt(`${experience.id}l`, 8000, 98000), [experience.id])
+  const initialCommentCount = useMemo(() => seededInt(`${experience.id}c`, 80, 980), [experience.id])
+  const initialSaveCount = useMemo(() => seededInt(`${experience.id}s`, 500, 4500), [experience.id])
+  const initialShareCount = useMemo(() => seededInt(`${experience.id}sh`, 40, 480), [experience.id])
+  const [followed, setFollowed] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [likeCount, setLikeCount] = useState(initialLikeCount)
+  const [saveCount, setSaveCount] = useState(initialSaveCount)
+  const [shareCount, setShareCount] = useState(initialShareCount)
+  const [paused, setPaused] = useState(false)
+  const [playFlash, setPlayFlash] = useState(null)
+  const [bigHearts, setBigHearts] = useState([])
+  const lastTapRef = useRef(0)
+  const singleTapTimerRef = useRef(null)
+  const discRotation = useRef(new Animated.Value(0)).current
+  const progressScale = useRef(new Animated.Value(0)).current
+  const handle = `@${toHandle(experience.creator)}`
+  const genreTag = `#${(experience.genre || '').replace(/[・·\s]/g, '')}`
+  const visual = getGenreVisual(experience.genre)
+  const hashtags = [genreTag, '#体験会', experience.isBeginnerFriendly ? '#初心者歓迎' : null, experience.isFirstTimeFree ? '#初回無料' : null]
+    .filter(Boolean)
+    .join(' ')
+  const soundText = `${experience.creator} の体験 · オリジナルサウンド`
+
+  useEffect(() => () => {
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    discRotation.setValue(0)
+    progressScale.setValue(0)
+
+    const spin = Animated.loop(
+      Animated.timing(discRotation, {
+        toValue: 1,
+        duration: 6000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    )
+    const progress = Animated.loop(
+      Animated.sequence([
+        Animated.timing(progressScale, {
+          toValue: 1,
+          duration: 18000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(progressScale, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    )
+
+    spin.start()
+    progress.start()
+
+    return () => {
+      spin.stop()
+      progress.stop()
+    }
+  }, [discRotation, progressScale])
+
+  const triggerBigHeart = () => {
+    const id = Date.now()
+    setBigHearts((current) => [...current, id])
+    setTimeout(() => {
+      setBigHearts((current) => current.filter((item) => item !== id))
+    }, 900)
+  }
+
+  const handleRootPress = () => {
+    const now = Date.now()
+    const delta = now - lastTapRef.current
+
+    if (delta > 0 && delta < 300) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current)
+        singleTapTimerRef.current = null
+      }
+      lastTapRef.current = 0
+      triggerBigHeart()
+      setLiked((value) => {
+        if (value) return value
+        setLikeCount((count) => count + 1)
+        return true
+      })
+      return
+    }
+
+    lastTapRef.current = now
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current)
+    }
+    singleTapTimerRef.current = setTimeout(() => {
+      setPaused((value) => {
+        const next = !value
+        setPlayFlash(next ? '❚❚' : '▶')
+        setTimeout(() => setPlayFlash(null), 650)
+        return next
+      })
+      singleTapTimerRef.current = null
+    }, 310)
+  }
+
+  return (
+    <Pressable style={styles.container} onPress={handleRootPress}>
+      <BackgroundMedia experience={experience} paused={paused} />
+      <LinearGradient colors={['rgba(0,0,0,0.3)', 'transparent', 'transparent']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.95)']} style={styles.bottomShade} />
+      {playFlash ? (
+        <View pointerEvents="none" style={styles.playFlash}>
+          <Text style={styles.playFlashText}>{playFlash}</Text>
+        </View>
+      ) : null}
+      {bigHearts.map((id) => (
+        <View key={id} pointerEvents="none" style={styles.bigHeart}>
+          <Text style={styles.bigHeartText}>❤️</Text>
+        </View>
+      ))}
+      <View style={styles.content}>
+        <Text style={styles.creator}>{handle}</Text>
+        <Text style={styles.title}>{experience.title}</Text>
+        <Text style={styles.description} numberOfLines={3}>
+          {experience.description}
+        </Text>
+        <Text style={styles.hashtags}>{hashtags}</Text>
+        <Text style={styles.meta}>
+          {experience.location} • {experience.startTime}
+        </Text>
+        <View style={styles.soundRow}>
+          <Text style={styles.soundIcon}>♪</Text>
+          <Text style={styles.soundText} numberOfLines={1}>
+            {soundText}
+          </Text>
+        </View>
+        <View style={styles.ctaWrap}>
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation?.()
+              onDetail?.()
+            }}
+            style={[styles.ctaChip, reserved && styles.ctaChipReserved]}
+          >
+            <Text style={styles.ctaChipText}>
+              {reserved ? '✓ 予約済み' : '⚡ 予約する ▸'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.rail}>
+        <Pressable
+          style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
+          onPress={(event) => {
+            event.stopPropagation?.()
+            setFollowed((value) => !value)
+          }}
+        >
+          <View style={styles.avatar}>
+            <Text style={styles.avatarEmoji}>{experience.creatorAvatar}</Text>
+          </View>
+          <View style={[styles.followBadge, followed && styles.followBadgeActive]}>
+            <Text style={[styles.followBadgeText, followed && styles.followBadgeTextActive]}>{followed ? '✓' : '+'}</Text>
+          </View>
+        </Pressable>
+        <RailStat
+          kind={liked ? 'heartFilled' : 'heart'}
+          value={formatCount(likeCount)}
+          onPress={(event) => {
+            event.stopPropagation?.()
+            setLiked((value) => {
+              const next = !value
+              setLikeCount((count) => count + (next ? 1 : -1))
+              return next
+            })
+          }}
+        />
+        <RailStat kind="comment" value={formatCount(initialCommentCount)} onPress={(event) => event.stopPropagation?.()} />
+        <RailStat
+          kind={saved ? 'bookmarkFilled' : 'bookmark'}
+          value={formatCount(saveCount)}
+          onPress={(event) => {
+            event.stopPropagation?.()
+            setSaved((value) => {
+              const next = !value
+              setSaveCount((count) => count + (next ? 1 : -1))
+              return next
+            })
+          }}
+        />
+        <RailStat
+          kind="share"
+          value={formatCount(shareCount)}
+          onPress={(event) => {
+            event.stopPropagation?.()
+            setShareCount((count) => count + 1)
+          }}
+        />
+        <Animated.View
+          style={[
+            styles.discWrap,
+            {
+              transform: [{
+                rotate: discRotation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '360deg'],
+                }),
+              }],
+            },
+          ]}
+        >
+          <LinearGradient colors={visual.colors} style={styles.discFill}>
+            <Text style={styles.discEmoji}>{visual.emoji}</Text>
+          </LinearGradient>
+        </Animated.View>
+      </View>
+      <View style={styles.progressTrack}>
+        <Animated.View style={[styles.progressFill, { transform: [{ scaleX: progressScale }] }]} />
+      </View>
+    </Pressable>
+  )
+}
+
+function RailStat({ kind, value, onPress }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.railStat, pressed && styles.pressed]}>
+      {kind === 'heart' ? <Ionicons name="heart-outline" size={32} color="#fff" /> : null}
+      {kind === 'heartFilled' ? <Ionicons name="heart" size={32} color="#FE2C55" /> : null}
+      {kind === 'comment' ? <Ionicons name="chatbubble-ellipses-outline" size={30} color="#fff" /> : null}
+      {kind === 'bookmark' ? <Ionicons name="bookmark-outline" size={30} color="#fff" /> : null}
+      {kind === 'bookmarkFilled' ? <Ionicons name="bookmark" size={30} color="#fff" /> : null}
+      {kind === 'share' ? <Feather name="send" size={28} color="#fff" /> : null}
+      <Text style={styles.railCount}>{value}</Text>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    height: '100%',
+    backgroundColor: '#000',
+    justifyContent: 'flex-end',
+  },
+  fallbackCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackEmoji: {
+    fontSize: 180,
+    opacity: 0.28,
+  },
+  bottomShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '66%',
+  },
+  streamFrame: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    borderWidth: 0,
+  },
+  content: {
+    position: 'absolute',
+    left: 18,
+    right: 92,
+    bottom: 214,
+  },
+  creator: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 14,
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 34,
+    marginBottom: 16,
+  },
+  description: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 14,
+  },
+  hashtags: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  meta: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+  soundRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  soundIcon: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  soundText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 12,
+  },
+  ctaWrap: {
+    marginTop: 10,
+  },
+  ctaChip: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  ctaChipReserved: {
+    backgroundColor: colors.accent,
+  },
+  ctaChipText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  rail: {
+    position: 'absolute',
+    right: 6,
+    bottom: 118,
+    alignItems: 'center',
+    gap: 14,
+    width: 64,
+  },
+  avatarWrap: {
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  followBadge: {
+    position: 'absolute',
+    bottom: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 999,
+    backgroundColor: '#FE2C55',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followBadgeActive: {
+    backgroundColor: '#fff',
+  },
+  followBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  followBadgeTextActive: {
+    color: '#FE2C55',
+  },
+  railStat: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  avatarEmoji: {
+    fontSize: 26,
+  },
+  railCount: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  discWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    marginTop: 8,
+  },
+  discFill: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discEmoji: {
+    fontSize: 20,
+  },
+  progressTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 64,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fff',
+    transformOrigin: 'left',
+  },
+  playFlash: {
+    position: 'absolute',
+    left: '50%',
+    top: '44%',
+    transform: [{ translateX: -38 }, { translateY: -38 }],
+    width: 76,
+    height: 76,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playFlashText: {
+    color: '#fff',
+    fontSize: 34,
+    fontWeight: '700',
+  },
+  bigHeart: {
+    position: 'absolute',
+    left: '50%',
+    top: '44%',
+    transform: [{ translateX: -34 }, { translateY: -34 }],
+  },
+  bigHeartText: {
+    fontSize: 68,
+  },
+  pressed: {
+    transform: [{ scale: 0.9 }],
+  },
+})

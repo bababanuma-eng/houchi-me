@@ -1,54 +1,52 @@
-import { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Button from '../components/Button';
-import { genres } from '../data/dummyData';
-import { supabase } from '../lib/supabase';
+import { useRef, useState } from 'react'
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import { Video, ResizeMode } from 'expo-av'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons'
 
-const DURATION_OPTIONS = ['30分', '60分', '90分', '120分', 'その他'];
+import Button from '../components/Button'
+import { genres } from '../data/dummyData'
+import { supabase } from '../lib/supabase'
+import { colors } from '../styles/tokens'
+import { layout } from '../styles/layout'
 
-function Toggle({ checked, onChange, disabled = false }) {
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!disabled) onChange(!checked);
-      }}
-      disabled={disabled}
-      className={`relative w-10 h-6 rounded-full border border-white/10 flex items-center p-0.5 ${
-        checked ? 'bg-bg-elevated' : 'bg-bg-elevated'
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-    >
-      <motion.span
-        layout
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className={`block w-4 h-4 rounded-full ${
-          checked ? 'bg-accent' : 'bg-white/40'
-        }`}
-        style={{ marginLeft: checked ? 16 : 0 }}
-      />
-    </button>
-  );
-}
-
-function Row({ index, icon, label, children, onClick }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-      onClick={onClick}
-      className="flex items-center justify-between px-4 py-3.5 cursor-pointer"
-    >
-      <div className="flex items-center gap-2.5">
-        <span className="text-base">{icon}</span>
-        <span className="text-sm font-bold">{label}</span>
-      </div>
-      <div className="flex items-center gap-1.5 text-sm text-white/85">
-        {children}
-      </div>
-    </motion.div>
-  );
+const DURATION_OPTIONS = ['30分', '60分', '90分', '120分', 'その他']
+const VISIBILITY_OPTIONS = ['全員', 'フォロワーのみ', '招待のみ']
+const webInputStyle = {
+  date: {
+    width: '102px',
+    minHeight: '34px',
+    padding: '6px 10px',
+    borderRadius: '8px',
+    color: '#fff',
+    backgroundColor: '#1C1C1C',
+    border: '1px solid rgba(255,255,255,0.1)',
+    fontSize: '12px',
+    textAlign: 'right',
+    colorScheme: 'dark',
+  },
+  time: {
+    width: '68px',
+    minHeight: '34px',
+    padding: '6px 10px',
+    borderRadius: '8px',
+    color: '#fff',
+    backgroundColor: '#1C1C1C',
+    border: '1px solid rgba(255,255,255,0.1)',
+    fontSize: '12px',
+    textAlign: 'right',
+    colorScheme: 'dark',
+  },
+  select: {
+    minWidth: '86px',
+    color: '#fff',
+    backgroundColor: 'transparent',
+    border: 'none',
+    fontSize: '14px',
+    textAlign: 'right',
+    outline: 'none',
+  },
 }
 
 export default function PostScreen({ onSubmit, onBackToHome }) {
@@ -65,16 +63,16 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
     capacity: 6,
     isBeginnerFriendly: true,
     isFriendOk: true,
-    thumbnail: null,
-  });
-  const [submitted, setSubmitted] = useState(false);
-  const [mediaPreview, setMediaPreview] = useState(null);
-  const [mediaFile, setMediaFile] = useState(null);
-  const [mediaType, setMediaType] = useState(null); // 'image' | 'video'
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef(null);
+    allowComments: true,
+    visibility: '全員',
+  })
+  const [submitted, setSubmitted] = useState(false)
+  const [mediaAsset, setMediaAsset] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const pickedTypeRef = useRef(null)
 
-  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }))
 
   const valid =
     form.title.trim() &&
@@ -82,385 +80,663 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
     form.description.trim() &&
     form.location.trim() &&
     form.date &&
-    form.time;
+    form.time
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const type = file.type.startsWith('video/') ? 'video' : 'image';
-    setMediaFile(file);
-    setMediaType(type);
-    setMediaPreview(URL.createObjectURL(file));
-  };
+  const pickMedia = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: false,
+      quality: 0.9,
+    })
+
+    if (!result.canceled) {
+      const asset = result.assets?.[0]
+      setMediaAsset(asset)
+      pickedTypeRef.current = asset?.type
+    }
+  }
 
   const uploadMedia = async () => {
-    if (!mediaFile) return null;
-    setUploading(true);
-    try {
-      const body = new FormData();
-      body.append('file', mediaFile);
-      const { data, error } = await supabase.functions.invoke('upload-media', { body });
-      if (error || !data?.mediaUrl) return null;
-      return data.mediaUrl;
-    } finally {
-      setUploading(false);
-    }
-  };
+    if (!mediaAsset?.uri) return null
 
-  const [submitting, setSubmitting] = useState(false);
+    setUploading(true)
+    try {
+      const body = new FormData()
+      body.append('file', {
+        uri: mediaAsset.uri,
+        name: mediaAsset.fileName || `upload-${Date.now()}`,
+        type: mediaAsset.mimeType || (pickedTypeRef.current === 'video' ? 'video/mp4' : 'image/jpeg'),
+      })
+
+      const { data, error } = await supabase.functions.invoke('upload-media', { body })
+      if (error || !data?.mediaUrl) return null
+      return data.mediaUrl
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSubmit = async () => {
-    if (!valid || submitting) return;
-    setSubmitting(true);
-    const mediaUrl = await uploadMedia();
-    await onSubmit?.({ ...form, mediaUrl });
-    setSubmitting(false);
-    setSubmitted(true);
-  };
+    if (!valid || submitting) return
+    setSubmitting(true)
+    const mediaUrl = await uploadMedia()
+    await onSubmit?.({ ...form, mediaUrl })
+    setSubmitting(false)
+    setSubmitted(true)
+  }
 
-  const handleCoverClick = () => fileInputRef.current?.click();
+  const cycleDuration = () => {
+    const currentIndex = DURATION_OPTIONS.indexOf(form.duration)
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % DURATION_OPTIONS.length
+    update({ duration: DURATION_OPTIONS[nextIndex] })
+  }
 
-  const decCapacity = () =>
-    update({ capacity: Math.max(1, form.capacity - 1) });
-  const incCapacity = () =>
-    update({ capacity: Math.min(20, form.capacity + 1) });
+  const cycleVisibility = () => {
+    const currentIndex = VISIBILITY_OPTIONS.indexOf(form.visibility)
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % VISIBILITY_OPTIONS.length
+    update({ visibility: VISIBILITY_OPTIONS[nextIndex] })
+  }
 
-  const particles = Array.from({ length: 7 }, (_, i) => i);
+  if (submitted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.doneWrap}>
+          <View style={styles.doneIconWrap}>
+            <Ionicons name="checkmark-circle" size={72} color={colors.success} />
+            {Array.from({ length: 7 }).map((_, index) => (
+              <View key={index} style={[styles.spark, sparkStyle(index)]} />
+            ))}
+          </View>
+          <Text style={styles.doneTitle}>投稿しました</Text>
+          <View style={styles.doneCard}>
+            <Text style={styles.doneCardTitle}>「{form.title}」</Text>
+            <Text style={styles.doneCardBody}>Homeフィードに表示されます</Text>
+          </View>
+          <Button fullWidth size="lg" onPress={onBackToHome}>
+            Homeに戻る
+          </Button>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
-    <div className="relative w-full h-full overflow-y-auto no-scrollbar bg-black pb-24 text-white">
-      <AnimatePresence mode="wait">
-        {!submitted ? (
-          <motion.div
-            key="form"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            {/* Top Bar */}
-            <div className="flex items-center justify-between px-4 pt-12 pb-3 border-b border-white/10">
-              <span className="text-xl cursor-pointer select-none">✕</span>
-              <span className="text-base font-bold">投稿の準備</span>
-              <span className="text-sm text-white/55 cursor-pointer select-none">
-                ドラフト
-              </span>
-            </div>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.topBar}>
+          <Pressable onPress={onBackToHome}>
+            <Feather name="x" size={20} color="#fff" />
+          </Pressable>
+          <Text style={styles.topBarTitle}>投稿の準備</Text>
+          <Text style={styles.topBarAction}>ドラフト</Text>
+        </View>
 
-            {/* Cover + Caption */}
-            <div className="flex gap-3 px-4 pt-4">
-              <button
-                type="button"
-                onClick={handleCoverClick}
-                className="w-28 aspect-[3/4] rounded-xl border border-white/15 bg-bg-secondary flex flex-col items-center justify-center cursor-pointer hover:border-accent transition-colors shrink-0 overflow-hidden relative"
-              >
-                {mediaPreview ? (
-                  mediaType === 'video' ? (
-                    <video src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" muted />
-                  ) : (
-                    <img src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" alt="cover" />
-                  )
-                ) : (
-                  <>
-                    <span className="text-4xl">📸</span>
-                    <span className="text-[10px] text-white/55 mt-1.5">カバー</span>
-                  </>
-                )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
+        <View style={styles.heroRow}>
+          <Pressable onPress={pickMedia} style={styles.cover}>
+            {mediaAsset ? (
+              pickedTypeRef.current === 'video' ? (
+                <Video source={{ uri: mediaAsset.uri }} style={StyleSheet.absoluteFill} resizeMode={ResizeMode.COVER} isMuted shouldPlay isLooping />
+              ) : (
+                <Image source={{ uri: mediaAsset.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              )
+            ) : (
+              <View style={styles.coverPlaceholder}>
+                <MaterialIcons name="add-photo-alternate" size={36} color="#fff" />
+                <Text style={styles.coverHint}>カバー</Text>
+              </View>
+            )}
+          </Pressable>
 
-              <div className="flex-1 flex flex-col">
-                <span className="text-[10px] text-white/55 font-bold tracking-wider uppercase">
-                  タイトル
-                </span>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => update({ title: e.target.value })}
-                  placeholder="例：街角の小さな陶芸時間"
-                  className="w-full bg-transparent text-base font-bold text-white placeholder:text-white/40 outline-none border-b border-white/10 pb-2 mb-3"
-                />
-                <span className="text-[10px] text-white/55 font-bold tracking-wider uppercase">
-                  説明
-                </span>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => update({ description: e.target.value })}
-                  placeholder="どんな体験？参加者にひと言。"
-                  className="w-full bg-transparent text-sm text-white placeholder:text-white/40 outline-none resize-none min-h-[60px] pt-1"
-                />
-              </div>
-            </div>
+          <View style={styles.heroFields}>
+            <Text style={styles.miniLabel}>タイトル</Text>
+            <TextInput
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              style={styles.heroTitleInput}
+              value={form.title}
+              onChangeText={(title) => update({ title })}
+              placeholder="例：街角の小さな陶芸時間"
+            />
+            <Text style={styles.miniLabel}>説明</Text>
+            <TextInput
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              style={styles.heroDescriptionInput}
+              value={form.description}
+              onChangeText={(description) => update({ description })}
+              placeholder="どんな体験？参加者にひと言。"
+              multiline
+            />
+          </View>
+        </View>
 
-            {/* Hashtag suggestions */}
-            <div className="px-4 mt-2 flex gap-1.5 flex-wrap">
-              {genres.map((g) => {
-                const active = form.genre === g;
-                return (
-                  <motion.button
-                    key={g}
-                    type="button"
-                    layout
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => update({ genre: g })}
-                    className={`text-xs px-2.5 py-1 rounded-md cursor-pointer transition-colors border ${
-                      active
-                        ? 'bg-white text-black border-white'
-                        : 'bg-bg-elevated text-white border-white/10 hover:border-white/40'
-                    }`}
-                  >
-                    # {g}
-                  </motion.button>
-                );
-              })}
-            </div>
+        <View style={styles.genreWrap}>
+          {genres.map((genre) => (
+            <Pressable
+              key={genre}
+              onPress={() => update({ genre })}
+              style={[styles.genreChip, form.genre === genre && styles.genreChipActive]}
+            >
+              <Text style={[styles.genreChipText, form.genre === genre && styles.genreChipTextActive]}># {genre}</Text>
+            </Pressable>
+          ))}
+        </View>
 
-            {/* Detail Form Section */}
-            <div className="mt-6 mx-4 rounded-xl border border-white/10 bg-bg-secondary divide-y divide-white/5">
-              {/* 1. 開催日時 */}
-              <Row index={0} icon="🗓" label="開催日時">
-                <div className="flex items-center gap-2">
+        <View style={styles.detailCard}>
+          <FormRow icon="🗓" label="開催日時">
+            <View style={styles.dateTimeRow}>
+              {Platform.OS === 'web' ? (
+                <>
                   <input
-                    type="date"
                     value={form.date}
-                    onChange={(e) => update({ date: e.target.value })}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-bg-elevated border border-white/10 rounded-md px-2 py-1.5 text-xs text-white text-right [color-scheme:dark]"
+                    onChange={(event) => update({ date: event.target.value })}
+                    type="date"
+                    style={webInputStyle.date}
                   />
                   <input
-                    type="time"
                     value={form.time}
-                    onChange={(e) => update({ time: e.target.value })}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-bg-elevated border border-white/10 rounded-md px-2 py-1.5 text-xs text-white text-right [color-scheme:dark]"
+                    onChange={(event) => update({ time: event.target.value })}
+                    type="time"
+                    style={webInputStyle.time}
                   />
-                </div>
-              </Row>
-
-              {/* 2. 開催場所 */}
-              <Row index={1} icon="📍" label="開催場所">
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={(e) => update({ location: e.target.value })}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="下北沢"
-                  className="bg-transparent text-right text-sm w-32 outline-none placeholder:text-white/30 text-white"
-                />
-              </Row>
-
-              {/* 3. 所要時間 */}
-              <Row index={2} icon="⏱" label="所要時間">
-                <select
-                  value={form.duration}
-                  onChange={(e) => update({ duration: e.target.value })}
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-transparent text-right text-sm text-white outline-none border-none cursor-pointer [color-scheme:dark]"
-                >
-                  {DURATION_OPTIONS.map((d) => (
-                    <option key={d} value={d} className="bg-bg-secondary">
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-white/40">›</span>
-              </Row>
-
-              {/* 4. 参加費 */}
-              <Row index={3} icon="💰" label="参加費">
-                <div className="flex items-center gap-3">
-                  {form.isFirstTimeFree ? (
-                    <span className="text-sm text-white/85">初回無料</span>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        value={form.priceAmount}
-                        onChange={(e) =>
-                          update({ priceAmount: e.target.value })
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="500"
-                        className="bg-transparent text-right text-sm w-16 outline-none placeholder:text-white/30 text-white"
-                      />
-                      <span className="text-sm text-white/55">円</span>
-                    </div>
-                  )}
-                  <Toggle
-                    checked={form.isFirstTimeFree}
-                    onChange={(v) => update({ isFirstTimeFree: v })}
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    style={[styles.inlineInput, styles.dateInput]}
+                    value={form.date}
+                    onChangeText={(date) => update({ date })}
+                    placeholder="YYYY-MM-DD"
                   />
-                </div>
-              </Row>
+                  <TextInput
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    style={[styles.inlineInput, styles.timeInput]}
+                    value={form.time}
+                    onChangeText={(time) => update({ time })}
+                    placeholder="HH:MM"
+                  />
+                </>
+              )}
+            </View>
+          </FormRow>
 
-              {/* 5. 定員 */}
-              <Row index={4} icon="👥" label="定員">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      decCapacity();
-                    }}
-                    disabled={form.capacity <= 1}
-                    className="w-6 h-6 rounded-full bg-bg-elevated border border-white/10 text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    −
-                  </button>
-                  <span className="font-display text-2xl text-accent leading-none min-w-[28px] text-center">
-                    {form.capacity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      incCapacity();
-                    }}
-                    disabled={form.capacity >= 20}
-                    className="w-6 h-6 rounded-full bg-bg-elevated border border-white/10 text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    ＋
-                  </button>
-                </div>
-              </Row>
+          <FormRow icon="📍" label="開催場所">
+            <TextInput
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              style={styles.rowTextInput}
+              value={form.location}
+              onChangeText={(location) => update({ location })}
+              placeholder="下北沢"
+            />
+          </FormRow>
 
-              {/* 6. 初心者歓迎 */}
-              <Row index={5} icon="🌱" label="初心者歓迎">
-                <Toggle
-                  checked={form.isBeginnerFriendly}
-                  onChange={(v) => update({ isBeginnerFriendly: v })}
-                />
-              </Row>
+          <FormRow icon="⏱" label="所要時間" onPress={cycleDuration}>
+            {Platform.OS === 'web' ? (
+              <select value={form.duration} onChange={(event) => update({ duration: event.target.value })} style={webInputStyle.select}>
+                {DURATION_OPTIONS.map((duration) => (
+                  <option key={duration} value={duration}>
+                    {duration}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <View style={styles.trailingRow}>
+                <Text style={styles.rowValueText}>{form.duration}</Text>
+                <Text style={styles.chevron}>›</Text>
+              </View>
+            )}
+          </FormRow>
 
-              {/* 7. 友達参加OK */}
-              <Row index={6} icon="👯" label="友達参加OK">
-                <Toggle
-                  checked={form.isFriendOk}
-                  onChange={(v) => update({ isFriendOk: v })}
-                />
-              </Row>
+          <FormRow icon="💰" label="参加費">
+            <View style={styles.priceRow}>
+              {form.isFirstTimeFree ? (
+                <Text style={styles.rowValueText}>初回無料</Text>
+              ) : (
+                <View style={styles.priceInputWrap}>
+                  <TextInput
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    style={[styles.rowTextInput, styles.priceInput]}
+                    value={form.priceAmount}
+                    onChangeText={(priceAmount) => update({ priceAmount })}
+                    placeholder="500"
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.rowSuffix}>円</Text>
+                </View>
+              )}
+              <Switch value={form.isFirstTimeFree} onValueChange={(isFirstTimeFree) => update({ isFirstTimeFree })} />
+            </View>
+          </FormRow>
 
-              {/* 8. 公開範囲 */}
-              <Row index={7} icon="🎬" label="公開範囲">
-                <span className="text-sm text-white/85">全員</span>
-                <span className="text-white/40">›</span>
-              </Row>
+          <FormRow icon="👥" label="定員">
+            <View style={styles.capacityRow}>
+              <Pressable style={[styles.capacityButton, form.capacity <= 1 && styles.capacityButtonDisabled]} onPress={() => update({ capacity: Math.max(1, form.capacity - 1) })}>
+                <Text style={styles.capacityButtonText}>−</Text>
+              </Pressable>
+              <Text style={styles.capacityValue}>{form.capacity}</Text>
+              <Pressable style={styles.capacityButton} onPress={() => update({ capacity: Math.min(20, form.capacity + 1) })}>
+                <Text style={styles.capacityButtonText}>＋</Text>
+              </Pressable>
+            </View>
+          </FormRow>
 
-              {/* 9. コメントを許可 */}
-              <Row index={8} icon="💬" label="コメントを許可">
-                <Toggle checked={true} onChange={() => {}} />
-              </Row>
-            </div>
+          <FormRow icon="🌱" label="初心者歓迎">
+            <Switch value={form.isBeginnerFriendly} onValueChange={(isBeginnerFriendly) => update({ isBeginnerFriendly })} />
+          </FormRow>
 
-            {/* Footer */}
-            <div className="mt-6 px-4 sticky bottom-0 bg-gradient-to-t from-black via-black to-transparent pt-4 pb-4 flex items-center gap-3 z-10">
-              <button
-                type="button"
-                className="flex-1 h-12 rounded-md bg-bg-elevated border border-white/10 text-sm font-bold text-white cursor-pointer"
-              >
-                ドラフト
-              </button>
-              <button
-                type="button"
-                disabled={!valid || submitting}
-                onClick={handleSubmit}
-                className="flex-1 h-12 rounded-md bg-accent text-black text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {uploading ? 'アップロード中…' : submitting ? '投稿中…' : '投稿する'}
-              </button>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="done"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center"
+          <FormRow icon="👯" label="友達参加OK">
+            <Switch value={form.isFriendOk} onValueChange={(isFriendOk) => update({ isFriendOk })} />
+          </FormRow>
+
+          <FormRow icon="🎬" label="公開範囲" onPress={cycleVisibility}>
+            <View style={styles.trailingRow}>
+              <Text style={styles.rowValueText}>{form.visibility}</Text>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </FormRow>
+
+          <FormRow icon="💬" label="コメントを許可">
+            <Switch value={form.allowComments} onValueChange={(allowComments) => update({ allowComments })} />
+          </FormRow>
+        </View>
+
+        <View style={styles.footerActions}>
+          <Pressable style={styles.draftButton}>
+            <Text style={styles.draftButtonText}>ドラフト</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.publishButton, (!valid || submitting || uploading) && styles.publishButtonDisabled]}
+            disabled={!valid || submitting || uploading}
+            onPress={handleSubmit}
           >
-            <div className="relative flex items-center justify-center">
-              <motion.div
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 240, damping: 14 }}
-                className="text-7xl"
-              >
-                ✅
-              </motion.div>
-              {particles.map((i) => {
-                const angle = (i / particles.length) * Math.PI * 2;
-                const dist = 90 + (i % 3) * 18;
-                const tx = Math.cos(angle) * dist;
-                const ty = Math.sin(angle) * dist;
-                return (
-                  <motion.span
-                    key={i}
-                    initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
-                    animate={{
-                      opacity: [0, 1, 0],
-                      x: tx,
-                      y: ty,
-                      scale: [0, 1, 0.6],
-                    }}
-                    transition={{
-                      duration: 1.1,
-                      delay: 0.15 + i * 0.04,
-                      ease: 'easeOut',
-                    }}
-                    className="absolute left-1/2 top-1/2 w-2 h-2 -ml-1 -mt-1 rounded-sm bg-accent"
-                  />
-                );
-              })}
-            </div>
-
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-2xl font-bold mt-4 text-white"
-            >
-              投稿しました
-            </motion.h2>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="mt-4 bg-bg-secondary rounded-xl border border-white/10 p-4 w-full max-w-xs"
-            >
-              <p className="text-base font-bold text-white">
-                「{form.title}」
-              </p>
-              <p className="text-xs text-white/55 mt-1">
-                Homeフィードに表示されます
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="w-full mt-8 max-w-xs"
-            >
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                onClick={onBackToHome}
-              >
-                Homeに戻る
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+            <Text style={styles.publishButtonText}>
+              {uploading ? 'アップロード中…' : submitting ? '投稿中…' : '投稿する'}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
 }
+
+function LabeledInput({ label, multiline = false, ...props }) {
+  return (
+    <View style={styles.fieldWrap}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        placeholderTextColor={colors.textMuted}
+        style={[styles.input, multiline && styles.textarea]}
+        multiline={multiline}
+        {...props}
+      />
+    </View>
+  )
+}
+
+function FormRow({ icon, label, children, onPress }) {
+  const Wrapper = onPress ? Pressable : View
+  return (
+    <Wrapper style={styles.formRow} onPress={onPress}>
+      <View style={styles.formRowLeft}>
+        <Text style={styles.formRowIcon}>{icon}</Text>
+        <Text style={styles.formRowLabel}>{label}</Text>
+      </View>
+      <View style={styles.formRowRight}>{children}</View>
+    </Wrapper>
+  )
+}
+
+function sparkStyle(index) {
+  const angle = (index / 7) * Math.PI * 2
+  const distance = 72 + (index % 3) * 12
+  return {
+    transform: [{ translateX: Math.cos(angle) * distance }, { translateY: Math.sin(angle) * distance }],
+  }
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  content: {
+    paddingBottom: 120,
+  },
+  topBar: {
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: layout.topBarTop,
+    paddingBottom: layout.topBarBottom,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topBarTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  topBarAction: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: 16,
+  },
+  heroFields: {
+    flex: 1,
+  },
+  miniLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  heroTitleInput: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    paddingBottom: 8,
+    marginBottom: 12,
+  },
+  heroDescriptionInput: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    minHeight: 68,
+    textAlignVertical: 'top',
+  },
+  cover: {
+    width: 112,
+    aspectRatio: 3 / 4,
+    borderRadius: layout.cardRadius - 6,
+    overflow: 'hidden',
+    backgroundColor: colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  coverPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  coverHint: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  fieldWrap: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    gap: 8,
+  },
+  label: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  input: {
+    minHeight: 48,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.textPrimary,
+    backgroundColor: colors.bgSecondary,
+    fontSize: 15,
+  },
+  textarea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  genreWrap: {
+    marginTop: 12,
+    marginHorizontal: layout.screenPadding,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailCard: {
+    marginTop: 24,
+    marginHorizontal: layout.screenPadding,
+    borderRadius: layout.cardRadius,
+    backgroundColor: colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  formRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  formRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  formRowIcon: {
+    fontSize: 16,
+  },
+  formRowLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  formRowRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginLeft: 12,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  inlineInput: {
+    minHeight: 34,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    color: colors.textPrimary,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    fontSize: 12,
+    textAlign: 'right',
+  },
+  dateInput: {
+    width: 102,
+  },
+  timeInput: {
+    width: 68,
+  },
+  rowTextInput: {
+    minWidth: 110,
+    color: colors.textPrimary,
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  rowValueText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  rowSuffix: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  priceInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trailingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chevron: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 18,
+    lineHeight: 18,
+  },
+  priceInput: {
+    minWidth: 64,
+  },
+  capacityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  capacityButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  capacityButtonDisabled: {
+    opacity: 0.3,
+  },
+  capacityButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  capacityValue: {
+    color: colors.accent,
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 28,
+    minWidth: 28,
+    textAlign: 'center',
+  },
+  genreChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.bgElevated,
+  },
+  genreChipActive: {
+    backgroundColor: colors.textPrimary,
+  },
+  genreChipText: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  genreChipTextActive: {
+    color: '#000',
+  },
+  row: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  doneWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  doneIconWrap: {
+    width: 180,
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spark: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
+  },
+  doneTitle: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  doneCard: {
+    width: '100%',
+    maxWidth: 280,
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 16,
+    gap: 6,
+  },
+  doneCardTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  doneCardBody: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  footerActions: {
+    marginTop: 24,
+    marginHorizontal: layout.screenPadding,
+    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  draftButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  publishButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  publishButtonDisabled: {
+    opacity: 0.4,
+  },
+  publishButtonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+})

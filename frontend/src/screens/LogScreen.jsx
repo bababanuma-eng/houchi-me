@@ -1,12 +1,17 @@
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import Badge from '../components/Badge.jsx'
-import Button from '../components/Button.jsx'
-import StarRating from '../components/StarRating.jsx'
-import PointBurst from '../components/PointBurst.jsx'
-import { nextGenreSuggestions } from '../data/dummyData.js'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Feather, Ionicons } from '@expo/vector-icons'
 
-function LogScreen({ reservation, onSave, onCancel, onFinish }) {
+import Button from '../components/Button'
+import Badge from '../components/Badge'
+import PointBurst from '../components/PointBurst'
+import StarRating from '../components/StarRating'
+import { nextGenreSuggestions } from '../data/dummyData'
+import { colors } from '../styles/tokens'
+import { layout } from '../styles/layout'
+
+export default function LogScreen({ reservation, onSave, onCancel, onFinish }) {
   const [comment, setComment] = useState('')
   const [funRating, setFunRating] = useState(0)
   const [againRating, setAgainRating] = useState(0)
@@ -17,15 +22,13 @@ function LogScreen({ reservation, onSave, onCancel, onFinish }) {
 
   const valid = comment.trim() !== '' && funRating > 0 && againRating > 0
 
-  const toggleGenre = (g) => {
-    setNextGenres((prev) =>
-      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-    )
+  const toggleGenre = (genre) => {
+    setNextGenres((prev) => (prev.includes(genre) ? prev.filter((item) => item !== genre) : [...prev, genre]))
   }
 
   const handleSave = () => {
     if (!valid) return
-    const log = {
+    onSave?.({
       id: `log-${Date.now()}`,
       reservationId: reservation?.id,
       title: reservation?.title,
@@ -36,254 +39,308 @@ function LogScreen({ reservation, onSave, onCancel, onFinish }) {
       nextGenres,
       photo,
       pointEarned: 30,
-    }
-    onSave?.(log)
+    })
     setBurst(true)
     setSaved(true)
   }
 
   const togglePhoto = () => {
-    setPhoto((p) => (p === 'placeholder' ? null : 'placeholder'))
+    setPhoto((value) => (value === 'placeholder' ? null : 'placeholder'))
   }
 
-  const fieldAnim = (i) => ({
-    initial: { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
-    transition: { delay: 0.05 * i, duration: 0.35, ease: 'easeOut' },
-  })
+  if (saved) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.doneWrap}>
+          <Ionicons name="checkmark-circle" size={72} color={colors.success} />
+          <Text style={styles.doneTitle}>ログを保存しました</Text>
+          <Text style={styles.doneBody}>+30pt を獲得しました。</Text>
+          <View style={styles.doneCard}>
+            <Text style={styles.donePoints}>+30pt 獲得！</Text>
+            <Text style={styles.doneCardSub}>陶芸カテゴリ Lv.1 解放 🎉</Text>
+            <Text style={styles.doneCardNote}>手を動かす系の好奇心が成長しました</Text>
+          </View>
+          <Button fullWidth onPress={onFinish}>
+            プロフィールを見る
+          </Button>
+          <Button variant="ghost" fullWidth onPress={onFinish}>
+            閉じる
+          </Button>
+          <PointBurst show={burst} points={30} label="陶芸カテゴリ Lv.1 解放 🎉" onDone={() => setBurst(false)} duration={1600} />
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
-    <div className="relative w-full h-full overflow-y-auto no-scrollbar bg-bg-primary pb-24 px-4 pt-6">
-      <AnimatePresence mode="wait">
-        {!saved && (
-          <motion.div
-            key="form"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-1">
-              <button
-                onClick={onCancel}
-                className="text-2xl text-text-primary hover:text-accent transition-colors cursor-pointer leading-none"
-                aria-label="戻る"
-              >
-                ←
-              </button>
-              <h1 className="font-display text-2xl tracking-wider text-text-primary">
-                LOG
-              </h1>
-              <button
-                className="text-2xl text-text-muted hover:text-text-primary transition-colors cursor-pointer leading-none"
-                aria-label="設定"
-              >
-                ⋯
-              </button>
-            </div>
-            <p className="text-xs text-text-muted mb-6 text-center">今日の体験ログ</p>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Pressable onPress={onCancel}>
+            <Feather name="arrow-left" size={24} color="#fff" />
+          </Pressable>
+          <Text style={styles.headerTitle}>LOG</Text>
+          <Feather name="more-horizontal" size={24} color="#fff" />
+        </View>
+        <Text style={styles.headerSub}>今日の体験ログ</Text>
 
-            {/* Reservation card */}
-            <motion.div {...fieldAnim(0)} className="bg-bg-secondary rounded-2xl border border-line p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <span className="text-3xl leading-none">🎨</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge tone="success" size="sm">参加済</Badge>
-                  </div>
-                  <h2 className="text-base font-bold text-text-primary truncate">
-                    {reservation?.title}
-                  </h2>
-                  <p className="text-xs text-text-muted mt-1">
-                    {reservation?.startTime} • {reservation?.location}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <Text style={styles.cardEmoji}>🎨</Text>
+            <View style={styles.cardBodyWrap}>
+              <Badge tone="success" size="sm">参加済</Badge>
+              <Text style={styles.cardTitle}>{reservation?.title}</Text>
+              <Text style={styles.cardMeta}>
+                {reservation?.startTime} • {reservation?.location}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-            {/* Comment */}
-            <motion.div {...fieldAnim(1)} className="mb-6">
-              <label className="block text-xs font-bold text-text-secondary mb-2 tracking-wider uppercase">
-                感想を書く *
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="やってみてどうだった？驚いたこと・次にやりたいこと、なんでもOK"
-                className="w-full min-h-[120px] bg-bg-elevated border border-line rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all outline-none resize-none"
-                rows={4}
-              />
-            </motion.div>
+        <FieldLabel label="感想を書く *" />
+        <TextInput
+          value={comment}
+          onChangeText={setComment}
+          placeholder="やってみてどうだった？"
+          placeholderTextColor={colors.textMuted}
+          multiline
+          style={styles.textarea}
+        />
 
-            {/* Fun rating */}
-            <motion.div {...fieldAnim(2)} className="mb-6">
-              <label className="block text-xs font-bold text-text-secondary mb-2 tracking-wider uppercase">
-                面白かった度
-              </label>
-              <div className="flex items-center justify-between">
-                <StarRating value={funRating} onChange={setFunRating} size="lg" />
-                <span className="text-sm font-mono text-text-muted">
-                  {funRating}/5
-                </span>
-              </div>
-            </motion.div>
+        <FieldLabel label="面白かった度" />
+        <View style={styles.ratingRow}>
+          <StarRating value={funRating} onChange={setFunRating} size="lg" />
+          <Text style={styles.ratingValue}>{funRating}/5</Text>
+        </View>
 
-            {/* Again rating */}
-            <motion.div {...fieldAnim(3)} className="mb-6">
-              <label className="block text-xs font-bold text-text-secondary mb-2 tracking-wider uppercase">
-                またやりたい度
-              </label>
-              <div className="flex items-center justify-between">
-                <StarRating value={againRating} onChange={setAgainRating} size="lg" />
-                <span className="text-sm font-mono text-text-muted">
-                  {againRating}/5
-                </span>
-              </div>
-            </motion.div>
+        <FieldLabel label="またやりたい度" />
+        <View style={styles.ratingRow}>
+          <StarRating value={againRating} onChange={setAgainRating} size="lg" />
+          <Text style={styles.ratingValue}>{againRating}/5</Text>
+        </View>
 
-            {/* Next genres */}
-            <motion.div {...fieldAnim(4)} className="mb-6">
-              <label className="block text-xs font-bold text-text-secondary mb-1 tracking-wider uppercase">
-                次に気になるジャンル
-              </label>
-              <p className="text-xs text-text-muted mb-3">複数選択OK</p>
-              <div className="flex flex-wrap gap-2">
-                {nextGenreSuggestions.map((g) => {
-                  const active = nextGenres.includes(g)
-                  return (
-                    <motion.button
-                      key={g}
-                      layout
-                      whileTap={{ scale: 0.95 }}
-                      animate={{ scale: active ? 1.04 : 1 }}
-                      onClick={() => toggleGenre(g)}
-                      className={`rounded-full px-4 py-2 text-xs font-bold cursor-pointer transition-all ${
-                        active
-                          ? 'bg-accent text-black shadow-glow'
-                          : 'bg-bg-elevated text-text-secondary border border-line'
-                      }`}
-                    >
-                      {g}
-                    </motion.button>
-                  )
-                })}
-              </div>
-            </motion.div>
-
-            {/* Photo */}
-            <motion.div {...fieldAnim(5)} className="mb-8">
-              <label className="block text-xs font-bold text-text-secondary mb-2 tracking-wider uppercase">
-                写真を追加 (任意)
-              </label>
-              <button
-                type="button"
-                onClick={togglePhoto}
-                className="w-full h-32 rounded-2xl border-2 border-dashed border-line bg-bg-secondary mt-1 flex flex-col items-center justify-center cursor-pointer hover:border-accent transition-colors"
-              >
-                {photo === 'placeholder' ? (
-                  <>
-                    <span className="text-2xl">✅</span>
-                    <span className="text-xs text-text-secondary mt-1">写真設定済み</span>
-                    <span className="text-[10px] text-text-muted mt-1">タップで解除</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-3xl">📷</span>
-                    <span className="text-xs text-text-muted mt-2">タップして選択</span>
-                  </>
-                )}
-              </button>
-            </motion.div>
-
-            {/* Submit */}
-            <motion.div {...fieldAnim(6)}>
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                disabled={!valid}
-                onClick={handleSave}
-              >
-                ログを保存する
-              </Button>
-              {!valid && (
-                <p className="text-[11px] text-text-muted text-center mt-3">
-                  感想と2つの星評価を入力すると保存できます
-                </p>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-
-        {saved && (
-          <motion.div
-            key="done"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center min-h-[70vh] text-center"
-          >
-            <motion.div
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.05, type: 'spring', stiffness: 200, damping: 14 }}
-              className="text-7xl"
+        <FieldLabel label="次に気になるジャンル" />
+        <Text style={styles.helper}>複数選択OK</Text>
+        <View style={styles.genreWrap}>
+          {nextGenreSuggestions.map((genre) => (
+            <Pressable
+              key={genre}
+              onPress={() => toggleGenre(genre)}
+              style={[styles.genreChip, nextGenres.includes(genre) && styles.genreChipActive]}
             >
-              ✅
-            </motion.div>
+              <Text style={[styles.genreChipText, nextGenres.includes(genre) && styles.genreChipTextActive]}>{genre}</Text>
+            </Pressable>
+          ))}
+        </View>
 
-            <motion.h2
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.35 }}
-              className="text-2xl font-bold mt-4 text-text-primary"
-            >
-              ログを保存しました
-            </motion.h2>
+        <FieldLabel label="写真を追加 (任意)" />
+        <Pressable onPress={togglePhoto} style={styles.photoCard}>
+          {photo === 'placeholder' ? (
+            <>
+              <Ionicons name="checkmark-circle" size={32} color={colors.success} />
+              <Text style={styles.photoTitle}>写真設定済み</Text>
+              <Text style={styles.photoSub}>タップで解除</Text>
+            </>
+          ) : (
+            <>
+              <Feather name="camera" size={28} color={colors.textPrimary} />
+              <Text style={styles.photoTitle}>タップして選択</Text>
+              <Text style={styles.photoSub}>体験の雰囲気を残せます</Text>
+            </>
+          )}
+        </Pressable>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55, duration: 0.4 }}
-              className="mt-6 w-full bg-bg-secondary border border-line rounded-2xl p-6 flex flex-col items-center"
-            >
-              <div className="font-display text-5xl text-accent leading-none">
-                +30pt 獲得！
-              </div>
-              <p className="text-sm text-text-secondary mt-3">
-                陶芸カテゴリ Lv.1 解放 🎉
-              </p>
-              <p className="text-xs text-text-muted mt-2">
-                手を動かす系の好奇心が成長しました
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.85, duration: 0.4 }}
-              className="w-full mt-8 flex flex-col gap-3"
-            >
-              <Button variant="primary" size="lg" fullWidth onClick={onFinish}>
-                プロフィールを見る
-              </Button>
-              <Button variant="ghost" size="md" fullWidth onClick={onFinish}>
-                閉じる
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <PointBurst
-        show={burst}
-        points={30}
-        label="陶芸カテゴリ Lv.1 解放 🎉"
-        onDone={() => setBurst(false)}
-        duration={1600}
-      />
-    </div>
+        <Button fullWidth size="lg" disabled={!valid} onPress={handleSave}>
+          ログを保存する
+        </Button>
+        {!valid ? <Text style={styles.footerNote}>感想と2つの星評価を入力すると保存できます</Text> : null}
+      </ScrollView>
+      <PointBurst show={burst} points={30} label="陶芸カテゴリ Lv.1 解放 🎉" onDone={() => setBurst(false)} duration={1600} />
+    </SafeAreaView>
   )
 }
 
-export default LogScreen
+function FieldLabel({ label }) {
+  return <Text style={styles.fieldLabel}>{label}</Text>
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  content: {
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: 6,
+    paddingBottom: 100,
+    gap: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitle: {
+    color: colors.textPrimary,
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  headerSub: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: -6,
+    marginBottom: 6,
+  },
+  card: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: layout.cardRadius,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  cardEmoji: {
+    fontSize: 30,
+    lineHeight: 32,
+  },
+  cardBodyWrap: {
+    flex: 1,
+    gap: 6,
+  },
+  cardTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  cardMeta: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  fieldLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  textarea: {
+    minHeight: 120,
+    borderRadius: layout.cardRadius - 2,
+    padding: 14,
+    color: colors.textPrimary,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    textAlignVertical: 'top',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ratingValue: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  helper: {
+    marginTop: -8,
+    color: colors.textMuted,
+    fontSize: 12,
+  },
+  genreWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  genreChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.bgElevated,
+  },
+  genreChipActive: {
+    backgroundColor: colors.accent,
+  },
+  genreChipText: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  genreChipTextActive: {
+    color: '#000',
+  },
+  photoCard: {
+    height: 128,
+    borderRadius: layout.cardRadius,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.bgSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  photoTitle: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  photoSub: {
+    color: colors.textMuted,
+    fontSize: 11,
+  },
+  doneWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 14,
+  },
+  doneTitle: {
+    color: colors.textPrimary,
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  doneBody: {
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
+  doneCard: {
+    width: '100%',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: layout.cardRadius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  donePoints: {
+    color: colors.accent,
+    fontSize: 40,
+    fontWeight: '800',
+  },
+  doneCardSub: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  doneCardNote: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  footerNote: {
+    color: colors.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: -4,
+  },
+})

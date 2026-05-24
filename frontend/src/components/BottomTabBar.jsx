@@ -1,133 +1,97 @@
-import { motion } from 'framer-motion';
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { MaterialIcons, Ionicons } from '@expo/vector-icons'
 
-function HomeIcon({ active }) {
-  const color = active ? '#ffffff' : '#a1a1a1';
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill={color}
-      aria-hidden="true"
-    >
-      <path d="M12 3.172 2.5 11.05a.75.75 0 0 0 .956 1.155L4 11.82V20a1 1 0 0 0 1 1h4.5a.5.5 0 0 0 .5-.5V15a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5.5a.5.5 0 0 0 .5.5H19a1 1 0 0 0 1-1v-8.18l.544.385A.75.75 0 0 0 21.5 11.05L12 3.172Z" />
-    </svg>
-  );
-}
+import { colors } from '../styles/tokens'
 
-function ProfileIcon({ active }) {
-  const color = active ? '#ffffff' : '#a1a1a1';
+function Tab({ kind, label, active, onPress }) {
   return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill={color}
-      aria-hidden="true"
-    >
-      <path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 1.75c-3.728 0-8.25 1.872-8.25 5.5V21a.5.5 0 0 0 .5.5h15.5a.5.5 0 0 0 .5-.5v-1.75c0-3.628-4.522-5.5-8.25-5.5Z" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#000"
-      strokeWidth="3"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
+      {kind === 'home' ? (
+        <MaterialIcons name="home-filled" size={26} color={active ? '#fff' : '#A1A1A1'} />
+      ) : (
+        <Ionicons name="person" size={24} color={active ? '#fff' : '#A1A1A1'} />
+      )}
+      <Text style={[styles.label, active && styles.activeLabel]}>{label}</Text>
+    </Pressable>
+  )
 }
 
 export default function BottomTabBar({ active = 'home', onChange }) {
-  const handle = (tab) => {
-    if (onChange) onChange(tab);
-  };
-
-  const isPostActive = active === 'post';
+  const insets = useSafeAreaInsets()
 
   return (
-    <nav
-      className="absolute bottom-0 left-0 right-0 z-30 bg-black border-t border-white/5 pb-2"
-      role="navigation"
-    >
-      <div className="h-14 flex items-center justify-around px-4">
-        {/* Home */}
-        <motion.button
-          type="button"
-          aria-label="ホーム"
-          onClick={() => handle('home')}
-          whileTap={{ scale: 0.9 }}
-          className="flex flex-col items-center gap-0.5 cursor-pointer select-none bg-transparent border-0 p-0"
-        >
-          <HomeIcon active={active === 'home'} />
-          <span
-            className={`text-[10px] font-bold tracking-tight ${
-              active === 'home' ? 'text-white' : 'text-[#a1a1a1]'
-            }`}
-          >
-            ホーム
-          </span>
-        </motion.button>
-
-        {/* Post (center +) */}
-        <motion.button
-          type="button"
-          aria-label="投稿"
-          onClick={() => handle('post')}
-          whileTap={{ scale: 0.9 }}
-          whileHover={{ scale: 1.05 }}
-          className={`relative w-12 h-8 flex items-center justify-center cursor-pointer select-none bg-transparent border-0 p-0 ${
-            isPostActive
-              ? 'drop-shadow-[0_0_18px_rgba(255,92,0,0.45)]'
-              : ''
-          }`}
-        >
-          {/* Teal layer (back-left) */}
-          <span
-            className="absolute inset-0 -translate-x-1 rounded-[10px] bg-[#25F4EE]"
-            aria-hidden="true"
-          />
-          {/* Pink layer (back-right) */}
-          <span
-            className="absolute inset-0 translate-x-1 rounded-[10px] bg-[#FE2C55]"
-            aria-hidden="true"
-          />
-          {/* White front */}
-          <span
-            className="absolute inset-0 rounded-[10px] bg-white flex items-center justify-center"
-            aria-hidden="true"
-          >
-            <PlusIcon />
-          </span>
-        </motion.button>
-
-        {/* Profile */}
-        <motion.button
-          type="button"
-          aria-label="プロフィール"
-          onClick={() => handle('profile')}
-          whileTap={{ scale: 0.9 }}
-          className="flex flex-col items-center gap-0.5 cursor-pointer select-none bg-transparent border-0 p-0"
-        >
-          <ProfileIcon active={active === 'profile'} />
-          <span
-            className={`text-[10px] font-bold tracking-tight ${
-              active === 'profile' ? 'text-white' : 'text-[#a1a1a1]'
-            }`}
-          >
-            プロフィール
-          </span>
-        </motion.button>
-      </div>
-    </nav>
-  );
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <Tab kind="home" label="ホーム" active={active === 'home'} onPress={() => onChange?.('home')} />
+      <Pressable onPress={() => onChange?.('post')} style={({ pressed }) => [styles.centerButtonWrap, pressed && styles.pressed]}>
+        <View style={styles.centerButtonTeal} />
+        <View style={styles.centerButtonPink} />
+        <View style={styles.centerButtonFront}>
+          <MaterialIcons name="add" size={22} color="#000" />
+        </View>
+      </Pressable>
+      <Tab kind="profile" label="プロフィール" active={active === 'profile'} onPress={() => onChange?.('profile')} />
+    </View>
+  )
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#000',
+    paddingTop: 4,
+    minHeight: 64,
+  },
+  tab: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  pressed: {
+    transform: [{ scale: 0.9 }],
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#A1A1A1',
+  },
+  activeLabel: {
+    color: colors.textPrimary,
+  },
+  centerButtonWrap: {
+    width: 52,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerButtonTeal: {
+    position: 'absolute',
+    inset: 0,
+    transform: [{ translateX: -4 }],
+    borderRadius: 10,
+    backgroundColor: '#25F4EE',
+  },
+  centerButtonPink: {
+    position: 'absolute',
+    inset: 0,
+    transform: [{ translateX: 4 }],
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+  },
+  centerButtonFront: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+})

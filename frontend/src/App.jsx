@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { Alert, Platform, StyleSheet, View } from 'react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { StatusBar } from 'expo-status-bar'
 
-import BottomTabBar from './components/BottomTabBar.jsx'
-import HomeScreen from './screens/HomeScreen.jsx'
-import ProfileScreen from './screens/ProfileScreen.jsx'
-import PostScreen from './screens/PostScreen.jsx'
-import LogScreen from './screens/LogScreen.jsx'
-
-import { initialLogs } from './data/dummyData.js'
-import { supabase } from './lib/supabase.js'
+import BottomTabBar from './components/BottomTabBar'
+import HomeScreen from './screens/HomeScreen'
+import LogScreen from './screens/LogScreen'
+import PostScreen from './screens/PostScreen'
+import ProfileScreen from './screens/ProfileScreen'
+import { initialLogs } from './data/dummyData'
+import { supabase } from './lib/supabase'
+import { layout } from './styles/layout'
 
 function toUiExperience(row) {
   return {
@@ -27,6 +29,7 @@ function toUiExperience(row) {
     isBeginnerFriendly: false,
     isFriendOk: false,
     startTime: row.scheduled_at,
+    duration: '60分',
     thumbnailUrl: row.media_url,
   }
 }
@@ -34,18 +37,29 @@ function toUiExperience(row) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [authUser, setAuthUser] = useState(null)
-  const [user, setUser] = useState({ name: '', points: 0, title: '' })
+  const [user, setUser] = useState({
+    name: '',
+    avatar: '🌱',
+    points: 0,
+    title: '好奇心の芽',
+    nextTitle: '探究するハンター',
+    nextTitlePoints: 500,
+    joinedCount: 0,
+  })
   const [experiences, setExperiences] = useState([])
+  const [reservations, setReservations] = useState([])
+  const [logs, setLogs] = useState(initialLogs)
+  const [logTarget, setLogTarget] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setAuthUser(session.user)
-      } else {
-        supabase.auth.signInAnonymously().then(({ data }) => {
-          setAuthUser(data.user)
-        })
+        return
       }
+      supabase.auth.signInAnonymously().then(({ data }) => {
+        setAuthUser(data.user)
+      })
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -59,21 +73,28 @@ export default function App() {
     if (!authUser) return
 
     const loadOrCreateUser = async () => {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
+      const { data } = await supabase.from('users').select('*').eq('id', authUser.id).single()
 
       if (data) {
-        setUser(data)
-      } else {
-        const { data: created } = await supabase
-          .from('users')
-          .insert({ id: authUser.id })
-          .select()
-          .single()
-        if (created) setUser(created)
+        setUser((prev) => ({
+          ...prev,
+          ...data,
+          avatar: prev.avatar,
+          nextTitle: '探究するハンター',
+          nextTitlePoints: 500,
+        }))
+        return
+      }
+
+      const { data: created } = await supabase.from('users').insert({ id: authUser.id }).select().single()
+      if (created) {
+        setUser((prev) => ({
+          ...prev,
+          ...created,
+          avatar: prev.avatar,
+          nextTitle: '探究するハンター',
+          nextTitlePoints: 500,
+        }))
       }
     }
 
@@ -85,6 +106,7 @@ export default function App() {
       .from('experiences')
       .select('*, users(name)')
       .order('created_at', { ascending: false })
+
     if (data) setExperiences(data.map(toUiExperience))
   }
 
@@ -95,15 +117,18 @@ export default function App() {
       .eq('user_id', userId)
       .in('status', ['reserved', 'joined'])
       .order('created_at', { ascending: false })
+
     if (data) {
-      setReservations(data.map((r) => ({
-        id: r.id,
-        experienceId: r.experience_id,
-        title: r.experiences?.title ?? '',
-        startTime: r.experiences?.scheduled_at ?? '',
-        location: r.experiences?.location ?? '',
-        completed: r.status === 'joined',
-      })))
+      setReservations(
+        data.map((reservation) => ({
+          id: reservation.id,
+          experienceId: reservation.experience_id,
+          title: reservation.experiences?.title ?? '',
+          startTime: reservation.experiences?.scheduled_at ?? '',
+          location: reservation.experiences?.location ?? '',
+          completed: reservation.status === 'joined',
+        })),
+      )
     }
   }
 
@@ -115,14 +140,7 @@ export default function App() {
     if (authUser) fetchReservations(authUser.id)
   }, [authUser])
 
-  const [reservations, setReservations] = useState([])
-  const [logs, setLogs] = useState(initialLogs)
-  const [logTarget, setLogTarget] = useState(null)
-
-  const reservedIds = useMemo(
-    () => new Set(reservations.map((r) => r.experienceId)),
-    [reservations],
-  )
+  const reservedIds = useMemo(() => new Set(reservations.map((item) => item.experienceId)), [reservations])
 
   const handleReserve = async (experience) => {
     if (reservedIds.has(experience.id)) return
@@ -132,7 +150,7 @@ export default function App() {
     })
 
     if (error || data?.error) {
-      alert(data?.error || '予約に失敗しました')
+      Alert.alert('予約に失敗しました', data?.error || 'もう一度お試しください。')
       return
     }
 
@@ -149,31 +167,14 @@ export default function App() {
     ])
   }
 
-  const handleWriteLog = (reservation) => {
-    setLogTarget(reservation)
-  }
-
   const handleSaveLog = (log) => {
     setLogs((prev) => [log, ...prev])
-    setReservations((prev) =>
-      prev.map((r) =>
-        r.id === log.reservationId ? { ...r, completed: true } : r,
-      ),
-    )
+    setReservations((prev) => prev.map((item) => (item.id === log.reservationId ? { ...item, completed: true } : item)))
     setUser((prev) => ({
       ...prev,
-      points: prev.points + (log.pointEarned || 30),
-      joinedCount: prev.joinedCount + 1,
+      points: (prev.points ?? 0) + (log.pointEarned || 30),
+      joinedCount: (prev.joinedCount ?? 0) + 1,
     }))
-  }
-
-  const handleLogFinish = () => {
-    setLogTarget(null)
-    setActiveTab('profile')
-  }
-
-  const handleLogCancel = () => {
-    setLogTarget(null)
   }
 
   const handlePostSubmit = async (formData) => {
@@ -184,97 +185,88 @@ export default function App() {
       description: formData.description,
       category: formData.genre,
       location: formData.location,
-      fee: formData.isFirstTimeFree ? 0 : parseInt(formData.priceAmount || 0),
+      fee: formData.isFirstTimeFree ? 0 : parseInt(formData.priceAmount || 0, 10),
       capacity: formData.capacity,
-      scheduled_at: formData.date && formData.time
-        ? new Date(`${formData.date}T${formData.time}`).toISOString()
-        : null,
+      scheduled_at: formData.date && formData.time ? new Date(`${formData.date}T${formData.time}`).toISOString() : null,
       media_url: formData.mediaUrl ?? null,
     })
     await fetchExperiences()
   }
 
-  const handlePostBackHome = () => {
-    setActiveTab('home')
+  let screen = null
+  switch (activeTab) {
+    case 'home':
+      screen = <HomeScreen experiences={experiences} reservedIds={reservedIds} onReserve={handleReserve} />
+      break
+    case 'post':
+      screen = <PostScreen onSubmit={handlePostSubmit} onBackToHome={() => setActiveTab('home')} />
+      break
+    case 'profile':
+      screen = <ProfileScreen user={user} reservations={reservations} logs={logs} onWriteLog={setLogTarget} />
+      break
+    default:
+      screen = null
   }
 
-  // どのタブを描画するか
-  const tabScreen = (() => {
-    switch (activeTab) {
-      case 'home':
-        return (
-          <HomeScreen
-            key="home"
-            experiences={experiences}
-            reservedIds={reservedIds}
-            onReserve={handleReserve}
+  const appShell = (
+    <View style={styles.container}>
+      <View style={styles.screen}>{screen}</View>
+      {!logTarget ? (
+        <BottomTabBar active={activeTab} onChange={setActiveTab} />
+      ) : (
+        <View style={styles.overlay}>
+          <LogScreen
+            reservation={logTarget}
+            onSave={handleSaveLog}
+            onCancel={() => setLogTarget(null)}
+            onFinish={() => {
+              setLogTarget(null)
+              setActiveTab('profile')
+            }}
           />
-        )
-      case 'post':
-        return (
-          <PostScreen
-            key="post"
-            onSubmit={handlePostSubmit}
-            onBackToHome={handlePostBackHome}
-          />
-        )
-      case 'profile':
-        return (
-          <ProfileScreen
-            key="profile"
-            user={user}
-            reservations={reservations}
-            logs={logs}
-            onWriteLog={handleWriteLog}
-          />
-        )
-      default:
-        return null
-    }
-  })()
+        </View>
+      )}
+    </View>
+  )
 
   return (
-    <div className="device-frame relative">
-      <div className="relative w-full h-full">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="absolute inset-0"
-          >
-            {tabScreen}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* BottomTabBar はホーム/プロフィール/投稿のフォーム上でも表示。LogScreenを開いている間は隠す */}
-        {!logTarget && (
-          <BottomTabBar active={activeTab} onChange={setActiveTab} />
-        )}
-
-        {/* S5: 参加後ログ画面（オーバーレイ） */}
-        <AnimatePresence>
-          {logTarget && (
-            <motion.div
-              key="log-overlay"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 280 }}
-              className="absolute inset-0 z-50 bg-bg-primary"
-            >
-              <LogScreen
-                reservation={logTarget}
-                onSave={handleSaveLog}
-                onCancel={handleLogCancel}
-                onFinish={handleLogFinish}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
+    <SafeAreaProvider>
+      <StatusBar style="light" />
+      {Platform.OS === 'web' ? (
+        <View style={styles.webRoot}>
+          <View style={styles.deviceFrame}>{appShell}</View>
+        </View>
+      ) : (
+        appShell
+      )}
+    </SafeAreaProvider>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  screen: {
+    flex: 1,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  webRoot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000',
+    backgroundImage: 'radial-gradient(circle at 50% 0%, #111 0%, #000 60%)',
+  },
+  deviceFrame: {
+    width: layout.frameWidth,
+    height: layout.frameHeight,
+    overflow: 'hidden',
+    backgroundColor: '#0A0A0A',
+    borderRadius: 44,
+    boxShadow: '0 0 0 10px #0a0a0a, 0 0 0 12px #1a1a1a, 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(255, 92, 0, 0.08)',
+  },
+})

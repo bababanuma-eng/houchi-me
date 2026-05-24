@@ -1,0 +1,12 @@
+services:
+  supabase:
+    build:
+      context: .
+      dockerfile: Dockerfile.supabase
+    working_dir: /workspace/backend/supabase
+    command: ["status"]
+    volumes:
+      - ..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      HOME: /tmp/supabase

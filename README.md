@@ -117,15 +117,36 @@ Curio Meet は、熱狂している人のショート動画を入口に、未知
 ## セットアップ手順
 
 ```bash
+# Backend (Supabase local)
+cd backend
+docker compose run --rm supabase start
+
 # Frontend
-cd frontend
+cd ../frontend
+cp .env.example .env
 npm install
-npm run dev
+npm run web
+```
+
+Supabase local は `http://127.0.0.1:54321` で立ち上がる。`frontend/.env` の `EXPO_PUBLIC_SUPABASE_URL` はこの URL を使う。
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` は次で確認する。
+
+```bash
+cd backend
+docker compose run --rm supabase status
 ```
 
 ### Docker で起動する
 
-`frontend/.env.example` をコピーして `frontend/.env` を作り、Supabase の URL / anon key を設定する。
+まず Supabase local を Docker で起動する。
+
+```bash
+cd backend
+docker compose run --rm supabase start
+docker compose run --rm supabase status
+```
+
+そのあと `frontend/.env.example` をコピーして `frontend/.env` を作り、`EXPO_PUBLIC_SUPABASE_URL` と `EXPO_PUBLIC_SUPABASE_ANON_KEY` を設定する。
 
 ```bash
 cd frontend
@@ -133,18 +154,25 @@ cp .env.example .env
 docker compose up --build
 ```
 
-アプリは `http://localhost:5173` で開く。
+アプリは `http://localhost:19006` で開く。
 開発用コンテナは起動時に `npm ci` を実行して、`node_modules` ボリュームの依存ずれを避ける。
 
 本番相当の静的配信を確認したい場合:
 
 ```bash
 cd frontend
-docker compose --profile prod up --build web-prod
+docker compose --profile prod up --build app-prod
 ```
 
 こちらは `http://localhost:8080` で開く。
-`web-prod` は `.env` の `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` を build 時に埋め込む。
+`app-prod` は `.env` の `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` を build 時に埋め込む。
+
+Supabase local の停止:
+
+```bash
+cd backend
+docker compose run --rm supabase stop
+```
 
 ## 既知の問題 / 未実装機能（Day3 審査員向け）
 

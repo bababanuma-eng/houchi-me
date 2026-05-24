@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import Badge from './Badge.jsx';
-import Button from './Button.jsx';
-import { getGenreVisual } from '../styles/tokens.js';
+import { useEffect, useState } from 'react'
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons, Feather, FontAwesome6 } from '@expo/vector-icons'
+
+import Badge from './Badge'
+import Button from './Button'
+import { colors, getGenreVisual } from '../styles/tokens'
+import { layout } from '../styles/layout'
 
 export default function ExperienceModal({
   experience,
@@ -11,225 +14,287 @@ export default function ExperienceModal({
   onReserve,
   alreadyReserved = false,
 }) {
-  const [completed, setCompleted] = useState(false);
+  const [completed, setCompleted] = useState(false)
 
-  // モーダルを開いた瞬間 / 別の体験に切り替わったとき、完了状態をリセット or 同期
   useEffect(() => {
     if (open) {
-      setCompleted(!!alreadyReserved);
-    } else {
-      // 閉じた後にチラ見せされないよう、アニメ後にリセット
-      const t = setTimeout(() => setCompleted(false), 300);
-      return () => clearTimeout(t);
+      setCompleted(!!alreadyReserved)
+      return undefined
     }
-  }, [open, alreadyReserved, experience?.id]);
 
+    const timer = setTimeout(() => setCompleted(false), 280)
+    return () => clearTimeout(timer)
+  }, [alreadyReserved, experience?.id, open])
+
+  if (!experience) return null
+
+  const remaining = Math.max(experience.capacity - experience.reservedCount, 0)
+  const visual = getGenreVisual(experience.genre)
   const handleReserve = () => {
-    if (experience && onReserve) onReserve(experience);
-    setCompleted(true);
-  };
+    onReserve?.(experience)
+    setCompleted(true)
+  }
 
-  const visual = experience ? getGenreVisual(experience.genre) : null;
-  const remaining = experience
-    ? experience.capacity - experience.reservedCount
-    : 0;
+  if (!open) return null
+
+  const sheetContent = (
+    <View style={styles.backdrop}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <View style={styles.sheet}>
+        <View style={styles.handle} />
+        <ScrollView contentContainerStyle={styles.content}>
+          {!completed ? (
+            <>
+              <View style={[styles.hero, { backgroundColor: visual.colors[1] }]}>
+                <Text style={styles.heroEmoji}>{visual.emoji}</Text>
+              </View>
+
+              <View style={styles.badgeRow}>
+                <Badge>#{experience.genre}</Badge>
+                {experience.isFirstTimeFree && <Badge tone="success">初回無料</Badge>}
+              </View>
+              <Text style={styles.title}>{experience.title}</Text>
+
+              <View style={styles.card}>
+                <Row icon={<MaterialIcons name="calendar-month" size={18} color="#fff" />} label="開催日時" value={experience.startTime} />
+                <Row icon={<Feather name="map-pin" size={16} color="#fff" />} label="開催場所" value={experience.location} />
+                <Row icon={<Feather name="clock" size={16} color="#fff" />} label="所要時間" value={experience.duration || '60分'} />
+                <Row icon={<MaterialIcons name="yen" size={18} color="#fff" />} label="参加費" value={experience.price} />
+                <Row icon={<Feather name="users" size={16} color="#fff" />} label="定員" value={`${experience.capacity}人 / 残り ${remaining} 席`} />
+                <Row icon={<FontAwesome6 name="star" size={16} color="#fff" />} label="獲得ポイント" value={`+${experience.pointReward}pt`} accent />
+              </View>
+
+              <View style={styles.infoBadges}>
+                {experience.isBeginnerFriendly ? <Badge tone="soft">初心者歓迎</Badge> : null}
+                {experience.isFriendOk ? <Badge tone="outline">友達参加OK</Badge> : null}
+                {experience.isFirstTimeFree && <Badge tone="success">初回無料</Badge>}
+              </View>
+
+              <Text style={styles.description}>{experience.description}</Text>
+
+              <View style={styles.hostBox}>
+                <Text style={styles.hostAvatar}>{experience.creatorAvatar}</Text>
+                <View>
+                  <Text style={styles.hostName}>{experience.creator}</Text>
+                  <Text style={styles.hostRole}>ホスト</Text>
+                </View>
+              </View>
+
+              <View style={styles.actionWrap}>
+                <Button variant="primary" size="lg" fullWidth onPress={handleReserve} disabled={alreadyReserved}>
+                  {alreadyReserved ? '予約済み' : '予約する'}
+                </Button>
+              </View>
+            </>
+          ) : (
+            <View style={styles.completedWrap}>
+              <View style={styles.completedIcon}>
+                <Text style={styles.completedEmoji}>✅</Text>
+              </View>
+              <Text style={styles.completedTitle}>予約が完了しました</Text>
+
+              <View style={styles.completedCard}>
+                <View style={styles.badgeRow}>
+                  <Badge size="sm">#{experience.genre}</Badge>
+                </View>
+                <Text style={styles.completedCardTitle}>{experience.title}</Text>
+                <Text style={styles.completedCardMeta}>📅 {experience.startTime}</Text>
+                <Text style={styles.completedCardMeta}>📍 {experience.location}</Text>
+              </View>
+
+              <Text style={styles.completedReward}>参加後にログを書くと +30pt 獲得！</Text>
+
+              <Button variant="secondary" size="lg" fullWidth onPress={onClose}>
+                閉じる
+              </Button>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </View>
+  )
+
+  if (Platform.OS === 'web') {
+    return <View style={styles.webOverlay}>{sheetContent}</View>
+  }
 
   return (
-    <AnimatePresence>
-      {open && experience && (
-        <>
-          {/* バックドロップ */}
-          <motion.div
-            key="backdrop"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm z-40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-
-          {/* シート */}
-          <motion.div
-            key="sheet"
-            className="absolute bottom-0 left-0 right-0 bg-bg-elevated rounded-t-3xl z-50 max-h-[85%] overflow-y-auto no-scrollbar"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          >
-            {/* ドラッグハンドル */}
-            <div className="w-12 h-1.5 rounded-full bg-text-muted mx-auto mt-3 mb-4" />
-
-            <AnimatePresence mode="wait">
-              {!completed ? (
-                <motion.div
-                  key="detail"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="px-5 pb-8"
-                >
-                  {/* ジャンルヘッダー：絵文字＋グラデの帯 */}
-                  <div
-                    className="relative rounded-2xl overflow-hidden h-32 mb-5 flex items-center justify-center"
-                    style={{ background: visual.gradient }}
-                  >
-                    <div className="absolute inset-0 bg-black/20" />
-                    <span className="text-7xl relative drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
-                      {visual.emoji}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge tone="soft" size="md">#{experience.genre}</Badge>
-                    {experience.isFirstTimeFree && (
-                      <Badge tone="success" size="md">初回無料</Badge>
-                    )}
-                  </div>
-
-                  <h2 className="text-2xl font-bold mb-3 text-text-primary leading-tight">
-                    {experience.title}
-                  </h2>
-
-                  {/* 詳細リスト */}
-                  <div className="flex flex-col gap-3 mb-5">
-                    <div className="flex items-center gap-3 text-sm text-text-primary">
-                      <span className="w-5">📅</span>
-                      <span className="text-text-secondary">開催日時</span>
-                      <span className="ml-auto font-medium">{experience.startTime}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-text-primary">
-                      <span className="w-5">📍</span>
-                      <span className="text-text-secondary">開催場所</span>
-                      <span className="ml-auto font-medium">{experience.location}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-text-primary">
-                      <span className="w-5">⏱</span>
-                      <span className="text-text-secondary">所要時間</span>
-                      <span className="ml-auto font-medium">{experience.duration}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-text-primary">
-                      <span className="w-5">💰</span>
-                      <span className="text-text-secondary">参加費</span>
-                      <span className="ml-auto font-medium">{experience.price}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-text-primary">
-                      <span className="w-5">👥</span>
-                      <span className="text-text-secondary">定員</span>
-                      <span className="ml-auto font-medium">
-                        {experience.capacity}人 /{' '}
-                        <span className="text-accent">残り {remaining} 席</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-text-primary">
-                      <span className="w-5">⭐</span>
-                      <span className="text-text-secondary">獲得ポイント</span>
-                      <span className="ml-auto font-bold text-accent">
-                        +{experience.pointReward}pt
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* バッジ群 */}
-                  <div className="flex flex-wrap gap-2 mb-5">
-                    {experience.isBeginnerFriendly && (
-                      <Badge tone="soft">初心者歓迎</Badge>
-                    )}
-                    {experience.isFriendOk && (
-                      <Badge tone="outline">友達参加OK</Badge>
-                    )}
-                    {experience.isFirstTimeFree && (
-                      <Badge tone="success">初回無料</Badge>
-                    )}
-                  </div>
-
-                  {/* 説明 */}
-                  <p className="text-sm text-text-secondary leading-relaxed mb-5">
-                    {experience.description}
-                  </p>
-
-                  {/* クリエイター */}
-                  <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-bg-secondary">
-                    <div className="text-3xl">{experience.creatorAvatar}</div>
-                    <div className="flex flex-col">
-                      <span className="text-base font-bold text-text-primary">
-                        {experience.creator}
-                      </span>
-                      <span className="text-xs text-text-muted">ホスト</span>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-line pt-5">
-                    {alreadyReserved ? (
-                      <Button variant="primary" size="lg" fullWidth disabled>
-                        予約済み
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        onClick={handleReserve}
-                      >
-                        予約する
-                      </Button>
-                    )}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="completed"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="px-5 pb-8 pt-4 flex flex-col items-center text-center"
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 14 }}
-                    className="w-24 h-24 rounded-full bg-success/15 flex items-center justify-center mb-5 shadow-glow"
-                  >
-                    <motion.span
-                      initial={{ scale: 0, rotate: -30 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ delay: 0.15, type: 'spring', stiffness: 300 }}
-                      className="text-5xl"
-                    >
-                      ✅
-                    </motion.span>
-                  </motion.div>
-
-                  <h2 className="text-2xl font-bold text-text-primary mb-2">
-                    予約が完了しました
-                  </h2>
-
-                  <div className="w-full bg-bg-secondary rounded-2xl p-4 my-4 text-left">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge tone="soft" size="sm">#{experience.genre}</Badge>
-                    </div>
-                    <h3 className="text-base font-bold text-text-primary mb-2 leading-snug">
-                      {experience.title}
-                    </h3>
-                    <div className="text-xs text-text-secondary flex flex-col gap-1">
-                      <span>📅 {experience.startTime}</span>
-                      <span>📍 {experience.location}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-accent font-bold mb-5">
-                    参加後にログを書くと +30pt 獲得！
-                  </p>
-
-                  <Button variant="secondary" fullWidth onClick={onClose}>
-                    閉じる
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
+    <Modal animationType="slide" transparent visible={open} onRequestClose={onClose}>
+      {sheetContent}
+    </Modal>
+  )
 }
+
+function Row({ icon, label, value, accent = false }) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowIcon}>{icon}</View>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowValue, accent && styles.accent]}>{value}</Text>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'flex-end',
+  },
+  webOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 60,
+  },
+  sheet: {
+    maxHeight: '85%',
+    backgroundColor: colors.bgElevated,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  handle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: colors.textMuted,
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  content: {
+    paddingHorizontal: layout.screenPadding + 4,
+    paddingBottom: 28,
+    gap: 16,
+  },
+  hero: {
+    height: 128,
+    borderRadius: layout.cardRadius,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  heroEmoji: {
+    fontSize: 72,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 36,
+  },
+  description: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  card: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: layout.cardRadius,
+    padding: 16,
+    gap: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  rowIcon: {
+    width: 20,
+    alignItems: 'center',
+  },
+  rowLabel: {
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
+  rowValue: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 'auto',
+    maxWidth: '55%',
+    textAlign: 'right',
+  },
+  accent: {
+    color: colors.accent,
+  },
+  infoBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  hostBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: layout.cardRadius,
+    backgroundColor: colors.bgSecondary,
+  },
+  hostAvatar: {
+    fontSize: 32,
+  },
+  hostName: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  hostRole: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  actionWrap: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 20,
+  },
+  completedWrap: {
+    paddingTop: 8,
+    paddingBottom: 12,
+    alignItems: 'center',
+    gap: 16,
+  },
+  completedIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 229, 160, 0.14)',
+  },
+  completedEmoji: {
+    fontSize: 48,
+  },
+  completedTitle: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  completedCard: {
+    width: '100%',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: layout.cardRadius,
+    padding: 16,
+    gap: 8,
+  },
+  completedCardTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 24,
+  },
+  completedCardMeta: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  completedReward: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+})
