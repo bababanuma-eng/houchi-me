@@ -14,7 +14,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| チーム名 | （ここに記入） |
+| チーム名 | 肉すぎて筋 |
 | プロダクト名 | （Day1 確定時に記入） |
 | 担当メンター | （Day1 開始時に運営から通知される） |
 
@@ -22,10 +22,11 @@
 
 | GitHub | 氏名 | 大学 / 学部 | 担当役割 |
 |---|---|---|---|
-| @username | 氏名 | XX大学 XX学部 | PM |
-| @username | 氏名 | XX大学 XX学部 | BE |
-| @username | 氏名 | XX大学 XX学部 | FE |
-| @username | 氏名 | XX大学 XX学部 | Design |
+| @Yukinkmr | 中村悠紀 | 筑波大学大学院 システム情報工学研究群 | PM |
+| @k-kanke | 菅家孝太郎 | 横浜国立大学 理工学部 | Infra |
+| @bababanuma-eng | 柴沼勇太 | 慶應義塾大学 物理情報工学科 | FE |
+| @helloHailey-sketch | 王蕙鈺 | 東京大学大学院 情報理工学系研究科 | Full |
+| @Masa-eba | 阿部勝寿 | 同志社大学大学院 理工学研究科 | BE |
 
 担当役割の凡例：**PM** / **BE**（Backend）/ **FE**（Frontend）/ **Design** / **Infra** / **Data** / その他
 
