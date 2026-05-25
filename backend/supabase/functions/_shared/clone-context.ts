@@ -161,7 +161,7 @@ function buildMockEncounterSummaries(
   const topicTitle = topics[0]?.title?.trim() || '今日のTopic';
 
   const primary = seedLikes[0] ?? '最近の関心';
-  const secondary = seedLikes[1] ?? clone.ideal_self?.trim() || '新しい視点';
+  const secondary = seedLikes[1] ?? (clone.ideal_self?.trim() || '新しい視点');
   const template = pickMockEncounterTemplate(primary);
 
   if (template) {

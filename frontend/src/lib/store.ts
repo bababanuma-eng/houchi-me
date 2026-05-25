@@ -53,7 +53,7 @@ interface AppState {
   currentSpeaker: number;
   bootDone: boolean;
   hydrated: boolean;
-  openOverlay: 'hobbies' | 'friends' | 'profile' | null;
+  openOverlay: 'hobbies' | 'friends' | 'profile' | 'encounters' | null;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
   humanFriends: HumanFriend[];
@@ -79,7 +79,7 @@ interface AppState {
   setCurrentSpeaker: (i: number) => void;
   setBootDone: (v: boolean) => void;
   setHydrated: (v: boolean) => void;
-  setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | null) => void;
+  setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | 'encounters' | null) => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
   setChatTarget: (target: ChatTarget) => void;
