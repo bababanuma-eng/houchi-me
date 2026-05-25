@@ -199,7 +199,7 @@ function HobbiesOverlay({ onClose }: { onClose: () => void }) {
     setChatTarget({ type: 'self' });
     setChatTrigger({
       message: `「${hobby.name}」って、なんで好きになったのか教えてほしい。`,
-      fixedReply: true,
+      fixedReply: false,
     });
     setSelected(null);
     onClose();

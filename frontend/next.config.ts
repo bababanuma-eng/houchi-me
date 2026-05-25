@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 const turbopackRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["192.168.33.198"],
   turbopack: {
     root: turbopackRoot,
   },

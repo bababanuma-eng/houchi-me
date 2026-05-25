@@ -449,6 +449,37 @@
 - **評価**：採用
 - **採用 / 不採用の理由**：UI/UX 案を素早く動く形で具現化でき、PM と全員でデザイン方針を比較検討できる土台ができた。BE 引き継ぎ事項（認証フロー / agents テーブル / agent_dialogues / encounter-dialogue 等）も §3.5 に整理。main にマージするかは PM 判断だが、現時点で動作確認可能な実験ブランチとして残せる価値が高い。
 
+### #015 HO-114 / HO-113 接続安定化（Edge Functions / UUID / 固定返信誤配線）
+
+- **時刻**：23:40
+- **ツール**：Codex
+- **目的**：Next.js dev の `allowedDevOrigins` 設定、Supabase 保存時の UUID 形式不整合、`simulate-clone-day` の外部キー違反、趣味オーバーレイからのチャット固定返信誤配線をまとめて解消し、ローカルで Gemini / Edge Functions 経路を安定動作させる。
+- **プロンプト**：
+  ```
+  日本語で
+  Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+  To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+  （中略）
+
+  ## Error Type
+  Runtime Error
+
+  ## Error Message
+  simulate-clone-day failed: Edge Function returned a non-2xx status code
+
+  今ブランチ切って'/Users/abemasatoshi/Development/Engineer Guild Hackathon 2026/team-05/project-docs'これに従って
+  ```
+- **出力サマリ**：
+  - `frontend/next.config.ts` に `allowedDevOrigins` を追加し、LAN 経由の HMR ブロックを解消した。
+  - `frontend/src/lib/util.ts` の UUID フォールバックを RFC 4122 形式に置き換え、`clone.id` が `uuid` カラムに保存できるよう修正した。`clone-engine.ts` の重複 UUID 実装も共通化した。
+  - `backend/supabase/functions/simulate-clone-day/index.ts` で、`topics` の `upsert` 後に返ってきた実レコードの `id` を `notes.topic_id` に使うよう変更し、並行実行時の外部キー違反を解消した。
+  - `supabase functions serve --env-file .env.local` を起動してログを追い、Gemini の JSON パース失敗はフォールバックに落ちていること、真の 500 原因が `notes_topic_id_fkey` であることを切り分けた。
+  - `frontend/src/components/overlay/Overlays.tsx` の趣味導線で `fixedReply: true` になっていた箇所を `false` に修正し、自己クローンへの質問が `clone-chat` に流れるようにした。
+  - `rule.md` に従い、作業ブランチ `fix/ho-114-simulate-clone-day-stability` を作成した。
+- **評価**：採用
+- **採用 / 不採用の理由**：複数の不具合が段階的に重なっていたため、AI にログ読みとコード修正をまたがって進めさせることで、Next.js 設定・FE 保存・Edge Function・UI 導線の 4 層を短時間で切り分けできた。結果として、デモに必要な Topic 生成とクローンチャットの本番経路に近い確認が進められたため採用。
+
 ---
 
 ## Day 3（2026-05-26）

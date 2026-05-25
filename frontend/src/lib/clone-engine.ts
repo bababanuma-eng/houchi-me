@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
+import { uuid } from '@/lib/util';
 import type { Clone, Message, Topic } from '@/types';
 
 export interface CloneEngine {
@@ -179,13 +180,6 @@ function todayKey(): string {
   ).padStart(2, '0')}`;
 }
 
-function uuid(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -259,6 +253,7 @@ export class SupabaseEdgeFunctionImpl implements CloneEngine {
   readonly persistsMessages = true;
 
   async generateTodaysTopic(clone: Clone, _history: Topic[]): Promise<Topic> {
+    void _history;
     const { data, error } = await getSupabase().functions.invoke('simulate-clone-day', {
       body: { cloneId: clone.id },
     });
