@@ -159,7 +159,7 @@ export class SupabaseImpl implements Storage {
 
   async saveClone(clone: Clone): Promise<void> {
     const user = await this.ensureUser();
-    await getSupabase().from('clones').upsert({
+    const { error } = await getSupabase().from('clones').upsert({
       id: clone.id,
       user_id: user.id,
       name: clone.name,
@@ -172,9 +172,14 @@ export class SupabaseImpl implements Storage {
       exploration_type: clone.explorationType,
       sync_rate: clone.syncRate,
     });
+    if (error) throw error;
   }
 
   async clearClone(): Promise<void> {
+    const { data: { user } } = await getSupabase().auth.getUser();
+    if (user) {
+      await getSupabase().from('clones').delete().eq('user_id', user.id);
+    }
     await getSupabase().auth.signOut();
   }
 
@@ -204,7 +209,7 @@ export class SupabaseImpl implements Storage {
   async saveTopic(topic: Topic): Promise<void> {
     const cloneId = await this.fetchCloneId();
     if (!cloneId) return;
-    await getSupabase().from('topics').upsert({
+    const { error } = await getSupabase().from('topics').upsert({
       id: topic.id,
       clone_id: cloneId,
       date_key: topic.dateKey,
@@ -213,6 +218,7 @@ export class SupabaseImpl implements Storage {
       exploration_path: topic.explorationPath,
       related_concepts: topic.relatedConcepts,
     });
+    if (error) throw error;
   }
 
   async getFeedback(): Promise<Record<string, Feedback>> {
@@ -239,10 +245,11 @@ export class SupabaseImpl implements Storage {
   }
 
   async saveFeedback(feedback: Feedback): Promise<void> {
-    await getSupabase().from('feedback').upsert({
+    const { error } = await getSupabase().from('feedback').upsert({
       topic_id: feedback.topicId,
       kind: feedback.kind,
     });
+    if (error) throw error;
   }
 
   async getMessages(): Promise<Message[]> {
@@ -259,12 +266,13 @@ export class SupabaseImpl implements Storage {
   async appendMessage(message: Message): Promise<void> {
     const cloneId = await this.fetchCloneId();
     if (!cloneId) return;
-    await getSupabase().from('messages').insert({
+    const { error } = await getSupabase().from('messages').insert({
       id: message.id,
       clone_id: cloneId,
       role: message.role,
       text: message.text,
     });
+    if (error) throw error;
   }
 
   async updateClone(partial: Partial<Clone>): Promise<Clone | null> {
@@ -280,7 +288,8 @@ export class SupabaseImpl implements Storage {
     if (partial.personalityShift !== undefined) updates.personality_shift = partial.personalityShift;
     if (partial.explorationType !== undefined) updates.exploration_type = partial.explorationType;
     if (partial.syncRate !== undefined) updates.sync_rate = partial.syncRate;
-    await getSupabase().from('clones').update(updates).eq('user_id', user.id);
+    const { error } = await getSupabase().from('clones').update(updates).eq('user_id', user.id);
+    if (error) throw error;
     return this.getClone();
   }
 }

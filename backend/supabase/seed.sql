@@ -179,7 +179,9 @@ values
   )
 on conflict (id) do update set
   name = excluded.name,
+  mbti = excluded.mbti,
   likes = excluded.likes,
+  dislikes = excluded.dislikes,
   self_description = excluded.self_description,
   ideal_self = excluded.ideal_self,
   personality_shift = excluded.personality_shift,
