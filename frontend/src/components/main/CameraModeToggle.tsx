@@ -1,12 +1,7 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
-import type { CameraMode, ControlMode } from '@/types';
-
-const CAMERA_MODES: { id: CameraMode; label: string }[] = [
-  { id: 'third', label: '3rd' },
-  { id: 'first', label: '1st' },
-];
+import type { ControlMode } from '@/types';
 
 const CONTROL_MODES: { id: ControlMode; label: string }[] = [
   { id: 'auto', label: 'Auto' },
@@ -24,6 +19,7 @@ function SegmentButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`relative z-10 flex flex-1 flex-col items-center justify-center rounded-full px-2.5 py-2 transition-colors ${
         active
@@ -44,60 +40,36 @@ const panelGlass = {
   WebkitBackdropFilter: 'blur(20px) saturate(170%)',
 } as const;
 
+/** 放置 / 手動（Auto・Manual）の切り替えのみ。視点は第三者固定。 */
 export default function CameraModeToggle({ embedded = false }: { embedded?: boolean }) {
-  const cameraMode = useAppStore((s) => s.cameraMode);
-  const setCameraMode = useAppStore((s) => s.setCameraMode);
   const controlMode = useAppStore((s) => s.controlMode);
   const setControlMode = useAppStore((s) => s.setControlMode);
 
   const inner = (
-      <div className="space-y-1">
-        <div>
-          <div className="mb-1 px-1 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-white/28">
-            Camera
-          </div>
-          <div className="relative flex rounded-full border border-white/[0.06] bg-black/20 p-[3px]">
-            <div
-              className="absolute bottom-[3px] top-[3px] w-[calc(50%-1.5px)] rounded-full border border-[#caa85e]/28 bg-[#201a12] shadow-[0_4px_14px_rgba(0,0,0,0.28)] transition-transform duration-200"
-              style={{
-                transform: cameraMode === 'third' ? 'translateX(0)' : 'translateX(calc(100% + 1.5px))',
-              }}
-            />
-            {CAMERA_MODES.map((mode) => (
-              <SegmentButton
-                key={mode.id}
-                active={cameraMode === mode.id}
-                label={mode.label}
-                onClick={() => setCameraMode(mode.id)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="h-px bg-white/[0.06]" />
-
-        <div>
-          <div className="mb-1 px-1 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-white/28">
-            Motion
-          </div>
-          <div className="relative flex rounded-full border border-[#caa85e]/18 bg-black/25 p-[3px]">
-            <div
-              className="absolute bottom-[3px] top-[3px] w-[calc(50%-1.5px)] rounded-full border border-[#caa85e]/36 bg-[#201a12] shadow-[0_4px_14px_rgba(0,0,0,0.28)] transition-transform duration-200"
-              style={{
-                transform: controlMode === 'auto' ? 'translateX(0)' : 'translateX(calc(100% + 1.5px))',
-              }}
-            />
-            {CONTROL_MODES.map((mode) => (
-              <SegmentButton
-                key={mode.id}
-                active={controlMode === mode.id}
-                label={mode.label}
-                onClick={() => setControlMode(mode.id)}
-              />
-            ))}
-          </div>
-        </div>
+    <div>
+      <div className="mb-1 px-1 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-white/28">
+        Motion
       </div>
+      <div className="relative flex rounded-full border border-[#caa85e]/18 bg-black/25 p-[3px]">
+        <div
+          className="absolute bottom-[3px] top-[3px] w-[calc(50%-1.5px)] rounded-full border border-[#caa85e]/36 bg-[#201a12] shadow-[0_4px_14px_rgba(0,0,0,0.28)] transition-transform duration-200"
+          style={{
+            transform:
+              controlMode === 'auto'
+                ? 'translateX(0)'
+                : 'translateX(calc(100% + 1.5px))',
+          }}
+        />
+        {CONTROL_MODES.map((mode) => (
+          <SegmentButton
+            key={mode.id}
+            active={controlMode === mode.id}
+            label={mode.label}
+            onClick={() => setControlMode(mode.id)}
+          />
+        ))}
+      </div>
+    </div>
   );
 
   if (embedded) {

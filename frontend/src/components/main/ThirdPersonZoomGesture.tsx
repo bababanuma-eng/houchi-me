@@ -3,19 +3,18 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { useAppStore } from '@/lib/store';
 
-/** 3rd 視点時: トラックパッドのピンチ（ctrl+ホイール）・タッチの2本指ピンチでズーム */
+/** 第三者視点: トラックパッドのピンチ・タッチの2本指ピンチでズーム */
 export default function ThirdPersonZoomGesture({
   viewportRef,
 }: {
   viewportRef: RefObject<HTMLElement | null>;
 }) {
-  const cameraMode = useAppStore((s) => s.cameraMode);
   const adjustThirdCameraDistance = useAppStore((s) => s.adjustThirdCameraDistance);
   const pinchStartDist = useRef<number | null>(null);
 
   useEffect(() => {
     const el = viewportRef.current;
-    if (!el || cameraMode !== 'third') return;
+    if (!el) return;
 
     const applyWheelZoom = (deltaY: number) => {
       const step = Math.min(0.55, Math.max(0.12, Math.abs(deltaY) * 0.004));
@@ -65,7 +64,7 @@ export default function ThirdPersonZoomGesture({
       el.removeEventListener('touchend', onTouchEnd);
       el.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [cameraMode, adjustThirdCameraDistance, viewportRef]);
+  }, [adjustThirdCameraDistance, viewportRef]);
 
   return null;
 }

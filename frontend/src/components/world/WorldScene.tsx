@@ -46,7 +46,6 @@ export default function WorldScene() {
   const setCurrentSpeaker = useAppStore((s) => s.setCurrentSpeaker);
   const currentSpeaker = useAppStore((s) => s.currentSpeaker);
   const controlMode = useAppStore((s) => s.controlMode);
-  const cameraMode = useAppStore((s) => s.cameraMode);
   const thirdCameraDistance = useAppStore((s) => s.thirdCameraDistance);
   const manualInput = useAppStore((s) => s.manualInput);
   const chatTarget = useAppStore((s) => s.chatTarget);
@@ -231,10 +230,6 @@ export default function WorldScene() {
       encounter.avatarName === 'Sage' ? sagePos : echoPos,
     );
   }, [encounter?.sessionId, sagePos, echoPos]);
-
-  useEffect(() => {
-    initialized.current = false;
-  }, [cameraMode]);
 
   // conversation cycle
   useEffect(() => {
@@ -629,23 +624,14 @@ export default function WorldScene() {
       const facingZ = Math.cos(desiredRot);
       cameraTarget.current.set(nextPos.x, nextPos.y, nextPos.z);
 
-      if (cameraMode === 'third') {
-        const dist = thirdCameraDistance;
-        const height = 2.45 * (dist / 4.1);
-        cameraOffset.current.set(-facingX * dist, height, -facingZ * dist);
-        cameraLookAt.current.set(
-          nextPos.x + facingX * 1.6,
-          nextPos.y + 1.1,
-          nextPos.z + facingZ * 1.6,
-        );
-      } else {
-        cameraOffset.current.set(facingX * 0.12, 1.58, facingZ * 0.12);
-        cameraLookAt.current.set(
-          nextPos.x + facingX * 6,
-          nextPos.y + 1.52,
-          nextPos.z + facingZ * 6,
-        );
-      }
+      const dist = thirdCameraDistance;
+      const height = 2.45 * (dist / 4.1);
+      cameraOffset.current.set(-facingX * dist, height, -facingZ * dist);
+      cameraLookAt.current.set(
+        nextPos.x + facingX * 1.6,
+        nextPos.y + 1.1,
+        nextPos.z + facingZ * 1.6,
+      );
 
       const desiredCameraPos = cameraTarget.current.clone().add(cameraOffset.current);
       if (!initialized.current) {
@@ -653,10 +639,8 @@ export default function WorldScene() {
         controlsRef.current.target.copy(cameraLookAt.current);
         initialized.current = true;
       } else {
-        const cameraLerp = cameraMode === 'third' ? 0.14 : 0.2;
-        const targetLerp = cameraMode === 'third' ? 0.18 : 0.24;
-        camera.position.lerp(desiredCameraPos, cameraLerp);
-        controlsRef.current.target.lerp(cameraLookAt.current, targetLerp);
+        camera.position.lerp(desiredCameraPos, 0.14);
+        controlsRef.current.target.lerp(cameraLookAt.current, 0.18);
       }
       camera.lookAt(controlsRef.current.target);
     }
@@ -729,17 +713,15 @@ export default function WorldScene() {
       <RoomMarkers />
       <Particles />
 
-      {cameraMode === 'third' ? (
-        <Avatar
-          name="Mira"
-          palette={PALETTES.mira}
-          position={miraPos}
-          rotationY={miraRot}
-          activity={miraActivity}
-          speaking={!roomConversationId && speakerIdx === 0}
-          speech={!roomConversationId && speakerIdx === 0 ? speech : undefined}
-        />
-      ) : null}
+      <Avatar
+        name="Mira"
+        palette={PALETTES.mira}
+        position={miraPos}
+        rotationY={miraRot}
+        activity={miraActivity}
+        speaking={!roomConversationId && speakerIdx === 0}
+        speech={!roomConversationId && speakerIdx === 0 ? speech : undefined}
+      />
       <Avatar
         name="Sage"
         palette={PALETTES.sage}

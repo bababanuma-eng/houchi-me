@@ -95,8 +95,6 @@ export interface DailyAnswersResult {
 
 export type ViewTab = 'note' | 'world' | 'chat';
 export type ControlMode = 'auto' | 'manual';
-export type CameraMode = 'third' | 'first';
-
 export interface HumanFriend {
   id: string;
   friendId: string; // ユーザー間で共有するコード

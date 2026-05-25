@@ -53,10 +53,10 @@ export default function EncounterTrigger({ embedded = false }: { embedded?: bool
     <button
       onClick={handleStart}
       disabled={loading}
-      className={`flex w-full items-center justify-center rounded-full border border-white/[0.08] px-3 py-1.5 transition-colors hover:border-[#caa85e]/22 hover:bg-white/[0.05] disabled:opacity-60 ${
+      className={`flex w-full flex-col items-center gap-0.5 rounded-xl border border-white/[0.08] px-3 py-2.5 text-center transition-colors hover:border-[var(--color-neon-pink)]/35 hover:bg-[var(--color-neon-pink)]/8 disabled:opacity-60 ${
         embedded
           ? 'pointer-events-auto'
-          : 'pointer-events-auto shadow-[0_10px_30px_rgba(0,0,0,0.38)]'
+          : 'pointer-events-auto rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.38)]'
       }`}
       style={
         embedded
@@ -67,9 +67,16 @@ export default function EncounterTrigger({ embedded = false }: { embedded?: bool
               WebkitBackdropFilter: 'blur(20px) saturate(170%)',
             }
       }
+      aria-label="クローンを他のエージェントのもとへ送る"
     >
-      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-white/76">
-        {loading ? 'Preparing…' : 'Talk'}
+      <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--color-neon-pink)]">
+        Clone → Others
+      </span>
+      <span className="text-[13px] font-medium text-white/92">
+        {loading ? '遭遇を準備中…' : '他クローンと出会わせる'}
+      </span>
+      <span className="text-[10px] text-white/45">
+        Sage・Echo などと話し始める
       </span>
     </button>
   );
