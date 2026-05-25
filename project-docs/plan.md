@@ -165,7 +165,8 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 ## 4. タスク一覧
 
 タスク ID は `MVP-xxx`（MVP 機能）、`DES-xxx`（デザイン）、`POST-xxx`（MVP 以降）で付与。  
-**優先度**: P0（ブロッカー） / P1（MVP 必須） / P2（MVP 余力） / P3（Post-MVP）
+**優先度**: P0（ブロッカー） / P1（MVP 必須） / P2（MVP 余力） / P3（Post-MVP）  
+**担当**: 各タスク末尾に記載（`/` は分担）
 
 ### 4.0 担当ロールと作業場所
 
@@ -180,92 +181,114 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 > **FE / BE** と書いてあるタスクは、**API（BE）→ 画面接続（FE）** の順で進める。  
 > **Design / FE** は、Design が方針・トークンを決めてから FE が実装するのが理想。
 
+### 4.0.1 メンバーと担当方針
+
+| メンバー | 役割 | 主な担当 |
+|----------|------|----------|
+| **中村** | PM | 提出物・進捗管理・レビュー |
+| **菅家** | Infra / BE | デプロイ・Secrets・周辺 BE（スキーマ・付属ロジック） |
+| **阿部** | BE | コア Edge Functions（ログ・pt・マップ） |
+| **柴沼** | FE | 画面配線・DB 連携 |
+| **王** | Design / FE | デザイン全般・プロフィール / ログ / マップ UI polish |
+
+---
+
 ### 4.1 担当別：未完了タスク早見表
 
 #### BE（`backend/supabase/`）
 
-| 順 | ID | タスク | 優先度 |
-|----|-----|--------|--------|
-| 1 | MVP-009 | Edge Functions 本番デプロイ & Secrets | P0 |
-| 2 | MVP-401 | `submit-experience-log` Edge Function | P0 |
-| 3 | MVP-404 | `curiosity_map_items` upsert | P0 |
-| 4 | MVP-402 | ポイントルール実装 | P1 |
-| 5 | MVP-403 | `point_transactions` 記録 | P1 |
-| 6 | MVP-104 | プロフィール用 DB フィールド追加（`joined_count` 等） | P1 |
-| 7 | MVP-202 | 投稿時 `niche_score` 付与 | P1 |
-| 8 | MVP-407 | 称号閾値 + `users.title` 更新 | P2 |
-| 9 | MVP-206 | 投稿時 `point_reward` 算出 | P2 |
-| 10 | MVP-207 | 投稿フォーム項目のスキーマ整理 | P3 |
+| 順 | ID | タスク | 優先度 | 担当 |
+|----|-----|--------|--------|------|
+| 1 | MVP-009 | Edge Functions 本番デプロイ & Secrets | P0 | 菅家 |
+| 2 | MVP-401 | `submit-experience-log` Edge Function | P0 | 阿部 |
+| 3 | MVP-404 | `curiosity_map_items` upsert | P0 | 阿部 |
+| 4 | MVP-402 | ポイントルール実装 | P1 | 阿部 |
+| 5 | MVP-403 | `point_transactions` 記録 | P1 | 菅家 |
+| 6 | MVP-104 | プロフィール用 DB フィールド追加（`joined_count` 等） | P1 | 菅家 |
+| 7 | MVP-202 | 投稿時 `niche_score` 付与 | P1 | 菅家 |
+| 8 | MVP-407 | 称号閾値 + `users.title` 更新 | P2 | 阿部 |
+| 9 | MVP-206 | 投稿時 `point_reward` 算出 | P2 | 菅家 |
+| 10 | MVP-207 | 投稿フォーム項目のスキーマ整理 | P3 | 菅家 |
 
 #### FE（`frontend/src/`）
 
-| 順 | ID | タスク | 優先度 | 依存 |
-|----|-----|--------|--------|------|
-| 1 | MVP-410 | `handleSaveLog` → Edge Function 呼び出し | P0 | MVP-401 |
-| 2 | MVP-406 | 好奇心マップ DB 連携 | P0 | MVP-404 |
-| 3 | MVP-405 | ログ完了画面の動的表示 | P1 | MVP-401 |
-| 4 | MVP-501 | 参加済みログ一覧 DB 取得 | P1 | MVP-401 |
-| 5 | MVP-104 | プロフィール表示フィールド整合 | P1 | MVP-104 BE |
-| 6 | MVP-602 | ローディング・エラー UI | P1 | — |
-| 7 | MVP-601 | モバイル Web / safe-area 調整 | P1 | — |
-| 8 | MVP-204 | メディア本番確認・フィード表示 | P1 | MVP-009 |
-| 9 | MVP-209 | アップロード失敗通知 | P2 | — |
-| 10 | MVP-305 | 予約後 `reserved_count` 再同期 | P2 | — |
-| 11 | MVP-502 | ログカード `againRating` 表示 | P2 | MVP-501 |
-| 12 | MVP-408 | 参加数・初体験ジャンル数表示 | P2 | MVP-403 |
-| 13 | MVP-411 | `dummyData.js` 整理 | P2 | MVP-410, MVP-406 |
+| 順 | ID | タスク | 優先度 | 依存 | 担当 |
+|----|-----|--------|--------|------|------|
+| 1 | MVP-410 | `handleSaveLog` → Edge Function 呼び出し | P0 | MVP-401 | 柴沼 |
+| 2 | MVP-406 | 好奇心マップ DB 連携 | P0 | MVP-404 | 柴沼 / 王 |
+| 3 | MVP-405 | ログ完了画面の動的表示 | P1 | MVP-401 | 柴沼 / 王 |
+| 4 | MVP-501 | 参加済みログ一覧 DB 取得 | P1 | MVP-401 | 柴沼 |
+| 5 | MVP-104 | プロフィール表示フィールド整合 | P1 | MVP-104 BE | 柴沼 |
+| 6 | MVP-602 | ローディング・エラー UI | P1 | — | 柴沼 / 王 |
+| 7 | MVP-601 | モバイル Web / safe-area 調整 | P1 | — | 柴沼 / 王 |
+| 8 | MVP-204 | メディア本番確認・フィード表示 | P1 | MVP-009 | 柴沼 |
+| 9 | MVP-209 | アップロード失敗通知 | P2 | — | 柴沼 |
+| 10 | MVP-305 | 予約後 `reserved_count` 再同期 | P2 | — | 柴沼 |
+| 11 | MVP-502 | ログカード `againRating` 表示 | P2 | MVP-501 | 柴沼 |
+| 12 | MVP-408 | 参加数・初体験ジャンル数表示 | P2 | MVP-403 | 柴沼 |
+| 13 | MVP-411 | `dummyData.js` 整理 | P2 | MVP-410, MVP-406 | 柴沼 |
 
 #### Design（UI/UX 仕上げ）
 
-| 順 | ID | タスク | 優先度 | いつやるか |
-|----|-----|--------|--------|------------|
-| 1 | DES-001 | デザイントークン整備 | P1 | **今すぐ**（他画面の前提） |
-| 2 | DES-002 | Home / ExperienceCard polish | P1 | BE 作業と並行可 |
-| 3 | DES-003 | ExperienceModal polish | P1 | BE 作業と並行可 |
-| 4 | DES-007 | PostScreen polish | P2 | BE 作業と並行可 |
-| 5 | DES-005 | 好奇心マップ可視化 | P1 | **MVP-406 後** |
-| 6 | DES-006 | LogScreen 完了画面 | P1 | **MVP-405/410 後** |
-| 7 | DES-004 | プロフィール polish | P2 | MVP-104 後が理想 |
-| 8 | DES-008 | エラー・空状態 UI | P1 | MVP-602 と同時 |
-| 9 | DES-009 | 実機 Safari 調整 | P1 | MVP-601 と同時 |
-| 10 | DES-010 | デモ用スクショ・README 素材 | P1 | **Day 3 提出前** |
+| 順 | ID | タスク | 優先度 | いつやるか | 担当 |
+|----|-----|--------|--------|------------|------|
+| 1 | DES-001 | デザイントークン整備 | P1 | **今すぐ** | 王 |
+| 2 | DES-002 | Home / ExperienceCard polish | P1 | BE 作業と並行可 | 王 / 柴沼 |
+| 3 | DES-003 | ExperienceModal polish | P1 | BE 作業と並行可 | 王 / 柴沼 |
+| 4 | DES-007 | PostScreen polish | P2 | BE 作業と並行可 | 王 |
+| 5 | DES-005 | 好奇心マップ可視化 | P1 | **MVP-406 後** | 王 / 柴沼 |
+| 6 | DES-006 | LogScreen 完了画面 | P1 | **MVP-405/410 後** | 王 / 柴沼 |
+| 7 | DES-004 | プロフィール polish | P2 | MVP-104 後 | 王 |
+| 8 | DES-008 | エラー・空状態 UI | P1 | MVP-602 と同時 | 王 / 柴沼 |
+| 9 | DES-009 | 実機 Safari 調整 | P1 | MVP-601 と同時 | 王 / 柴沼 |
+| 10 | DES-010 | デモ用スクショ・README 素材 | P1 | **Day 3 提出前** | 王 / 中村 |
+
+#### PM / Infra
+
+| ID | タスク | 優先度 | 担当 |
+|----|--------|--------|------|
+| MVP-006 | README 更新 | P1 | 中村 |
+| MVP-603 | QR / デモ URL・スクショ | P1 | 中村 / 王 |
+| MVP-604 | 既知の問題 README 記載 | P1 | 中村 |
+| MVP-605 | AI_USAGE_LOG 追記 | P1 | 全員 |
+| MVP-204 | メディア本番（Infra 側） | P1 | 菅家 |
 
 ---
 
 ### Phase 0: インフラ・基盤（MVP の前提）
 
-- [x] **MVP-001** — Supabase プロジェクト作成、環境変数（`.env` / Vercel）設定 `P0` `Infra`
-- [x] **MVP-002** — DB スキーマ作成（§13: users, experiences, reservations, experience_logs, curiosity_map_items, point_transactions） `P0` `BE`
-- [x] **MVP-003** — RLS ポリシー草案（読み取り公開、書き込みは本人 or Edge Function 経由） `P0` `BE`
-- [x] **MVP-004** — シードデータ投入（体験会 5 件以上、デモユーザー） `P1` `BE`
-- [x] **MVP-005** — Vercel プロジェクト連携、`npm run build`、main 自動デプロイ `P0` `Infra`
-- [x] **MVP-007** — Cloudflare アカウント設定・R2 バケット作成・CDN 有効化 `P0` `Infra`
-- [x] **MVP-008** — Cloudflare Stream 有効化・アップロード用 API トークン発行 `P0` `Infra`
-- [ ] **MVP-006** — README 更新（デモ URL・技術スタック・既知の問題）※ plan 外ファイルだが提出必須 `P1` `PM`
-- [ ] **MVP-009** — Edge Functions 本番デプロイ & Secrets 設定（`reserve-experience` / `upload-media` の `SUPABASE_SERVICE_ROLE_KEY`、Cloudflare 各種トークン） `P0` `Infra / BE`
-- [x] **MVP-606** — GitHub Actions CI（PR / main で `frontend` の `npm run build`） `P2` `Infra`
+- [x] **MVP-001** — Supabase プロジェクト作成、環境変数（`.env` / Vercel）設定 `P0` `Infra` **担当: 菅家**
+- [x] **MVP-002** — DB スキーマ作成（§13: users, experiences, reservations, experience_logs, curiosity_map_items, point_transactions） `P0` `BE` **担当: 阿部**
+- [x] **MVP-003** — RLS ポリシー草案（読み取り公開、書き込みは本人 or Edge Function 経由） `P0` `BE` **担当: 阿部**
+- [x] **MVP-004** — シードデータ投入（体験会 5 件以上、デモユーザー） `P1` `BE` **担当: 阿部**
+- [x] **MVP-005** — Vercel プロジェクト連携、`npm run build`、main 自動デプロイ `P0` `Infra` **担当: 菅家**
+- [x] **MVP-007** — Cloudflare アカウント設定・R2 バケット作成・CDN 有効化 `P0` `Infra` **担当: 菅家**
+- [x] **MVP-008** — Cloudflare Stream 有効化・アップロード用 API トークン発行 `P0` `Infra` **担当: 菅家**
+- [ ] **MVP-006** — README 更新（デモ URL・技術スタック・既知の問題）※ plan 外ファイルだが提出必須 `P1` `PM` **担当: 中村**
+- [ ] **MVP-009** — Edge Functions 本番デプロイ & Secrets 設定（`reserve-experience` / `upload-media` の `SUPABASE_SERVICE_ROLE_KEY`、Cloudflare 各種トークン） `P0` `Infra / BE` **担当: 菅家**
+- [x] **MVP-606** — GitHub Actions CI（PR / main で `frontend` の `npm run build`） `P2` `Infra` **担当: 菅家**
 
 ---
 
 ### Phase 1: 認証・ユーザー（MVP）
 
-- [x] **MVP-101** — Supabase Auth 導入（匿名ログイン or メールなしデモ用 1 アカウント） `P1` `BE`
-- [x] **MVP-102** — `users` 行の作成・取得（プロフィール: name, avatar, points, title） `P1` `BE / FE`
-- [x] **MVP-103** — フロント: `dummyData.initialUser` を API 取得に置き換え `P1` `FE`
-- [ ] **MVP-104** — プロフィール表示フィールドの DB 整合（`avatar` / `nextTitlePoints` / `joinedCount` — 現状 UI が `dummyData` 前提のフィールドを参照） `P1` `FE / BE`
+- [x] **MVP-101** — Supabase Auth 導入（匿名ログイン or メールなしデモ用 1 アカウント） `P1` `BE` **担当: 阿部**
+- [x] **MVP-102** — `users` 行の作成・取得（プロフィール: name, avatar, points, title） `P1` `BE / FE` **担当: 阿部 / 柴沼**
+- [x] **MVP-103** — フロント: `dummyData.initialUser` を API 取得に置き換え `P1` `FE` **担当: 柴沼**
+- [ ] **MVP-104** — プロフィール表示フィールドの DB 整合（`avatar` / `nextTitlePoints` / `joinedCount` — 現状 UI が `dummyData` 前提のフィールドを参照） `P1` `FE / BE` **担当: 菅家 / 柴沼**
 
 ---
 
 ### Phase 2: 体験会・フィード（MVP Must）
 
-- [x] **MVP-201** — `experiences` CRUD API（一覧・詳細。作成は認証ユーザー） `P0` `BE`
-- [ ] **MVP-202** — 体験に `category`（好奇心クラスタ）と `nicheScore` を付与（シードは設定済み、投稿時は未設定） `P1` `BE`
-- [x] **MVP-203** — Home: `experiences` を Supabase から取得してフィード表示 `P0` `FE`
-- [ ] **MVP-204** — メディアアップロード: 画像 R2 / 動画 Stream + `mediaUrl` フィード表示（Function・PostScreen・ExperienceCard 実装済み。本番デプロイ・シード `media_url`・エラー UX 要確認） `P1` `FE / Infra`
-- [x] **MVP-205** — 投稿画面: フォーム送信 → DB insert → Home 先頭表示 `P0` `FE`
-- [ ] **MVP-206** — 投稿時 `pointReward` 算出（ニッチ度 or デフォルト 100） `P2` `BE`
-- [ ] **MVP-207** — 投稿フォームの DB 未保存項目整理（`duration` / 初心者歓迎 / 友達 OK — スキーマ追加 or UI 限定の明示） `P3` `BE / FE`
-- [ ] **MVP-209** — PostScreen: メディアアップロード失敗時の通知（現状 `null` のまま投稿続行） `P2` `FE`
+- [x] **MVP-201** — `experiences` CRUD API（一覧・詳細。作成は認証ユーザー） `P0` `BE` **担当: 阿部**
+- [ ] **MVP-202** — 体験に `category`（好奇心クラスタ）と `nicheScore` を付与（シードは設定済み、投稿時は未設定） `P1` `BE` **担当: 菅家**
+- [x] **MVP-203** — Home: `experiences` を Supabase から取得してフィード表示 `P0` `FE` **担当: 柴沼**
+- [ ] **MVP-204** — メディアアップロード: 画像 R2 / 動画 Stream + `mediaUrl` フィード表示（Function・PostScreen・ExperienceCard 実装済み。本番デプロイ・シード `media_url`・エラー UX 要確認） `P1` `FE / Infra` **担当: 菅家 / 柴沼**
+- [x] **MVP-205** — 投稿画面: フォーム送信 → DB insert → Home 先頭表示 `P0` `FE` **担当: 柴沼**
+- [ ] **MVP-206** — 投稿時 `pointReward` 算出（ニッチ度 or デフォルト 100） `P2` `BE` **担当: 菅家**
+- [ ] **MVP-207** — 投稿フォームの DB 未保存項目整理（`duration` / 初心者歓迎 / 友達 OK — スキーマ追加 or UI 限定の明示） `P3` `BE / FE` **担当: 菅家 / 柴沼**
+- [ ] **MVP-209** — PostScreen: メディアアップロード失敗時の通知（現状 `null` のまま投稿続行） `P2` `FE` **担当: 柴沼**
 
 **現状ですでにできていること（追加実装不要）**
 
@@ -276,10 +299,10 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Phase 3: 予約（MVP Must）
 
-- [x] **MVP-301** — Edge Function `reserve-experience`（定員チェック、`reserved_count` 更新、reservation insert） `P0` `BE`
-- [x] **MVP-302** — フロント: `handleReserve` を Function 呼び出しに変更 `P0` `FE`
-- [x] **MVP-303** — 二重予約防止（同一 user + experience） `P1` `BE`
-- [x] **MVP-304** — プロフィール「予約中」タブを DB の `status=reserved` で表示 `P1` `FE`
+- [x] **MVP-301** — Edge Function `reserve-experience`（定員チェック、`reserved_count` 更新、reservation insert） `P0` `BE` **担当: 阿部**
+- [x] **MVP-302** — フロント: `handleReserve` を Function 呼び出しに変更 `P0` `FE` **担当: 柴沼**
+- [x] **MVP-303** — 二重予約防止（同一 user + experience） `P1` `BE` **担当: 阿部**
+- [x] **MVP-304** — プロフィール「予約中」タブを DB の `status=reserved` で表示 `P1` `FE` **担当: 柴沼**
 
 **現状ギャップ**
 
@@ -287,22 +310,22 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 - [ ] 参加後ログのローカル state 残存（`initialLogs` / `handleSaveLog`）
 - [ ] 予約成功後の `experiences.reserved_count` フロント再同期
 
-- [ ] **MVP-305** — 予約成功後に `fetchExperiences` で定員表示を更新 `P2` `FE`
+- [ ] **MVP-305** — 予約成功後に `fetchExperiences` で定員表示を更新 `P2` `FE` **担当: 柴沼**
 
 ---
 
 ### Phase 4: 参加後ログ・ポイント・好奇心マップ（MVP Must / Should）
 
-- [ ] **MVP-401** — Edge Function `submit-experience-log`（ログ保存、pt 加算、マップ更新、reservation→joined） `P0` `BE`
-- [ ] **MVP-402** — ポイントルール実装（最低限: ログ +30、体験 `pointReward`、新ジャンル +150 は簡易判定） `P1` `BE`
-- [ ] **MVP-403** — `point_transactions` 記録とプロフィール総 pt 同期 `P1` `BE`
-- [ ] **MVP-404** — `curiosity_map_items` の upsert（genre + category、level / experience_count） `P0` `BE`
-- [ ] **MVP-405** — フロント: ログ保存後の完了画面を**実際の更新結果**で表示（ハードコード削除） `P1` `FE`
-- [ ] **MVP-406** — プロフィール好奇心マップタブを DB 連携 `P0` `FE`
-- [ ] **MVP-410** — フロント: `handleSaveLog` を `submit-experience-log` 呼び出しに変更（ローカル `initialLogs` 廃止） `P0` `FE`
-- [ ] **MVP-407** — 称号: pt 閾値テーブル + `users.title` 更新 `P2` `BE / FE`
-- [ ] **MVP-408** — 参加数・初体験ジャンル数の集計表示 `P2` `FE`
-- [ ] **MVP-411** — `dummyData.js` 整理（未使用 `experiences` 削除、DB 移行済み定数の分離） `P2` `FE`
+- [ ] **MVP-401** — Edge Function `submit-experience-log`（ログ保存、pt 加算、マップ更新、reservation→joined） `P0` `BE` **担当: 阿部**
+- [ ] **MVP-402** — ポイントルール実装（最低限: ログ +30、体験 `pointReward`、新ジャンル +150 は簡易判定） `P1` `BE` **担当: 阿部**
+- [ ] **MVP-403** — `point_transactions` 記録とプロフィール総 pt 同期 `P1` `BE` **担当: 菅家**
+- [ ] **MVP-404** — `curiosity_map_items` の upsert（genre + category、level / experience_count） `P0` `BE` **担当: 阿部**
+- [ ] **MVP-405** — フロント: ログ保存後の完了画面を**実際の更新結果**で表示（ハードコード削除） `P1` `FE` **担当: 柴沼 / 王**
+- [ ] **MVP-406** — プロフィール好奇心マップタブを DB 連携 `P0` `FE` **担当: 柴沼 / 王**
+- [ ] **MVP-410** — フロント: `handleSaveLog` を `submit-experience-log` 呼び出しに変更（ローカル `initialLogs` 廃止） `P0` `FE` **担当: 柴沼**
+- [ ] **MVP-407** — 称号: pt 閾値テーブル + `users.title` 更新 `P2` `BE / FE` **担当: 阿部 / 柴沼**
+- [ ] **MVP-408** — 参加数・初体験ジャンル数の集計表示 `P2` `FE` **担当: 柴沼**
+- [ ] **MVP-411** — `dummyData.js` 整理（未使用 `experiences` 削除、DB 移行済み定数の分離） `P2` `FE` **担当: 柴沼**
 
 **現状ギャップ**
 
@@ -313,9 +336,9 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Phase 5: プロフィール・交換 UI（MVP Should）
 
-- [ ] **MVP-501** — 参加済みログ一覧を `experience_logs` から取得 `P1` `FE`
-- [ ] **MVP-502** — ログカードに `againRating` 表示（現状 `funRating` のみ Stars） `P2` `FE`
-- [ ] **MVP-503** — 交換タブ: 「実交換不可」の注記を設計書通り明確化（500pt 等はイメージ） `P2` `FE / Design`
+- [ ] **MVP-501** — 参加済みログ一覧を `experience_logs` から取得 `P1` `FE` **担当: 柴沼**
+- [ ] **MVP-502** — ログカードに `againRating` 表示（現状 `funRating` のみ Stars） `P2` `FE` **担当: 柴沼**
+- [ ] **MVP-503** — 交換タブ: 「実交換不可」の注記を設計書通り明確化（500pt 等はイメージ） `P2` `FE / Design` **担当: 王**
 
 **現状ですでにできていること**
 
@@ -325,11 +348,11 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Phase 6: デモ品質・審査向け（MVP）
 
-- [ ] **MVP-601** — モバイル Web 表示調整（`device-frame`、safe-area、実機 Safari 確認） `P1` `FE` ← DES-009 と連携
-- [ ] **MVP-602** — ローディング・エラー UI（予約失敗、定員満了 — 現状 `alert` のみ） `P1` `FE` ← DES-008 と連携
-- [ ] **MVP-603** — QR コード用デモ URL 固定・スクリーンショット撮影 `P1` `PM` ← DES-010 と連携
-- [ ] **MVP-604** — 既知の問題 / 未実装を README に記載 `P1` `PM`
-- [ ] **MVP-605** — AI_USAGE_LOG 追記（開発節目ごと） `P1` `全員`
+- [ ] **MVP-601** — モバイル Web 表示調整（`device-frame`、safe-area、実機 Safari 確認） `P1` `FE` ← DES-009 と連携 **担当: 柴沼 / 王**
+- [ ] **MVP-602** — ローディング・エラー UI（予約失敗、定員満了 — 現状 `alert` のみ） `P1` `FE` ← DES-008 と連携 **担当: 柴沼 / 王**
+- [ ] **MVP-603** — QR コード用デモ URL 固定・スクリーンショット撮影 `P1` `PM` ← DES-010 と連携 **担当: 中村 / 王**
+- [ ] **MVP-604** — 既知の問題 / 未実装を README に記載 `P1` `PM` **担当: 中村**
+- [ ] **MVP-605** — AI_USAGE_LOG 追記（開発節目ごと） `P1` `全員` **担当: 全員**
 
 ---
 
@@ -338,16 +361,16 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 > **原則**: 機能が動く画面は先に BE/FE で配線し、見た目は DES タスクで後から polish する。  
 > ただし **DES-001（トークン）は最初**にやると、以降の修正コストが下がる。
 
-- [ ] **DES-001** — デザイントークン整備（`tokens.js` ↔ `tailwind.config.js` 統一、カラー・フォント・spacing） `P1` `Design`
-- [ ] **DES-002** — Home / `ExperienceCard` polish（CTA・右レール・グラデ fallback・タップフィードバック） `P1` `Design / FE`
-- [ ] **DES-003** — `ExperienceModal` polish（ボトムシート・予約完了状態・定員表示） `P1` `Design / FE`
-- [ ] **DES-004** — プロフィール polish（pt バー・称号・タブ・空状態） `P2` `Design / FE` ※ MVP-104 後
-- [ ] **DES-005** — 好奇心マップ可視化（Lv ドット・カテゴリ一覧・アニメーション） `P1` `Design / FE` ※ MVP-406 後
-- [ ] **DES-006** — `LogScreen` polish（入力フォーム・+pt 演出・完了画面の動的レイアウト） `P1` `Design / FE` ※ MVP-405/410 後
-- [ ] **DES-007** — `PostScreen` polish（カバーアップロード UI・フォーム余白・完了画面） `P2` `Design / FE`
-- [ ] **DES-008** — ローディング・エラー・空状態コンポーネント（`alert` 置き換え） `P1` `Design / FE` ※ MVP-602 と同時
-- [ ] **DES-009** — モバイル実機調整（safe-area、`100dvh`、タップ領域 44px 以上） `P1` `Design / FE` ※ MVP-601 と同時
-- [ ] **DES-010** — デモ用スクリーンショット・README 素材（Home / ログ完了 / マップ） `P1` `Design / PM` ※ Day 3 提出前
+- [ ] **DES-001** — デザイントークン整備（`tokens.js` ↔ `tailwind.config.js` 統一、カラー・フォント・spacing） `P1` `Design` **担当: 王**
+- [ ] **DES-002** — Home / `ExperienceCard` polish（CTA・右レール・グラデ fallback・タップフィードバック） `P1` `Design / FE` **担当: 王 / 柴沼**
+- [ ] **DES-003** — `ExperienceModal` polish（ボトムシート・予約完了状態・定員表示） `P1` `Design / FE` **担当: 王 / 柴沼**
+- [ ] **DES-004** — プロフィール polish（pt バー・称号・タブ・空状態） `P2` `Design / FE` ※ MVP-104 後 **担当: 王**
+- [ ] **DES-005** — 好奇心マップ可視化（Lv ドット・カテゴリ一覧・アニメーション） `P1` `Design / FE` ※ MVP-406 後 **担当: 王 / 柴沼**
+- [ ] **DES-006** — `LogScreen` polish（入力フォーム・+pt 演出・完了画面の動的レイアウト） `P1` `Design / FE` ※ MVP-405/410 後 **担当: 王 / 柴沼**
+- [ ] **DES-007** — `PostScreen` polish（カバーアップロード UI・フォーム余白・完了画面） `P2` `Design / FE` **担当: 王**
+- [ ] **DES-008** — ローディング・エラー・空状態コンポーネント（`alert` 置き換え） `P1` `Design / FE` ※ MVP-602 と同時 **担当: 王 / 柴沼**
+- [ ] **DES-009** — モバイル実機調整（safe-area、`100dvh`、タップ領域 44px 以上） `P1` `Design / FE` ※ MVP-601 と同時 **担当: 王 / 柴沼**
+- [ ] **DES-010** — デモ用スクリーンショット・README 素材（Home / ログ完了 / マップ） `P1` `Design / PM` ※ Day 3 提出前 **担当: 王 / 中村**
 
 **対象ファイル早見**
 
@@ -395,29 +418,27 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ```
 【今すぐ ─ 並行 OK】
-  BE:  MVP-009（Functions デプロイ）
-  BE:  MVP-401 → 402 → 403 → 404（ログ・pt・マップの核）
-  Design: DES-001（トークン）→ DES-002, DES-003, DES-007（配線済み画面の polish）
+  菅家:  MVP-009（Functions デプロイ）→ 403, 104 BE, 202, 206
+  阿部:  MVP-401 → 402 → 404（ログ・pt・マップの核）
+  王:    DES-001（トークン）→ DES-002, DES-003, DES-007
+  柴沼:  MVP-305, 602, 601, 209（401 待ち時間）
 
-【BE 401 完了後 ─ FE が着手】
-  FE:  MVP-410 → MVP-406 → MVP-405 → MVP-501（ログ〜マップ接続）
-
-【FE 406/405 完了後 ─ Design が着手】
-  Design: DES-005（マップ）→ DES-006（ログ完了画面）
-  Design: DES-004（プロフィール）※ MVP-104 後
+【401 完了後 ─ 柴沼・王が着手】
+  柴沼:  MVP-410 → MVP-406 → MVP-405 → MVP-501
+  王:    DES-005, DES-006（柴沼とペア）
 
 【Day 3 前 ─ 全員】
-  FE + Design: MVP-601/602 + DES-008/009（実機・エラー UI）
-  PM + Design: MVP-603 + DES-010（スクショ・README）
-  PM: MVP-006, MVP-604, MVP-605
+  柴沼+王: MVP-601/602 + DES-008/009
+  中村+王: MVP-603 + DES-010 + MVP-006, 604
+  全員:   MVP-605
 ```
 
-| フェーズ | BE | FE | Design |
-|----------|----|----|--------|
-| **Phase A**（今） | MVP-009 → MVP-401〜404 | 待機 or MVP-305, MVP-209 | DES-001 → DES-002, 003, 007 |
-| **Phase B**（ログ核完成後） | MVP-402〜404 仕上げ、MVP-104 BE | MVP-410 → 406 → 405 → 501 | DES-005, DES-006 着手 |
-| **Phase C**（デモ前日） | MVP-407, 206（余力） | MVP-601, 602, 411 | DES-008, 009, 010 |
-| **Phase D**（提出直前） | — | バグ修正のみ | 最終 polish + スクショ |
+| フェーズ | 菅家 / 阿部 | 柴沼 / 王 | 中村 |
+|----------|-------------|-----------|------|
+| **Phase A**（今） | 009 → 401〜404（阿部）/ 403, 104 BE（菅家） | DES-001〜003（王）/ 305, 602（柴沼） | 進捗管理 |
+| **Phase B**（ログ核完成後） | 402〜404 仕上げ、206, 202（菅家） | 410 → 406 → 405 → 501（柴沼）/ DES-005, 006（王） | レビュー |
+| **Phase C**（デモ前日） | 407, 204 Infra（菅家/阿部） | 601, 602, 411（柴沼）/ DES-008〜010（王） | 603, 604, 605 |
+| **Phase D**（提出直前） | バグ修正サポート | 最終 polish + スクショ | 提出物確定 |
 
 > **デザインを先にやりすぎない理由**: LogScreen 完了画面（DES-006）や好奇心マップ（DES-005）は、BE/FE で**実データが入ってから**調整しないと手戻りが大きい。  
 > **DES-001 だけは例外** — トークンを先に固めると DES-002 以降が楽になる。
@@ -434,9 +455,9 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Day 2（価値の核）
 
-**BE**: MVP-401〜404  
-**FE**: MVP-410 → MVP-406 → MVP-405 → MVP-501  
-**Design**: DES-001（午前中）→ DES-002, DES-003（BE 待ち時間に）
+**BE**: 阿部（401〜404）/ 菅家（009, 403, 104 BE, 202）  
+**FE**: 柴沼（410 → 406 → 405 → 501）  
+**Design**: 王（DES-001 → 002, 003 → 005, 006）
 
 - [ ] MVP-401〜406, MVP-410（ログ + pt + 好奇心マップ）
 - [x] MVP-205（投稿 → フィード）
@@ -450,10 +471,10 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Day 3（仕上げ + 提出）
 
-**BE**: 余力で MVP-407, MVP-206  
-**FE**: MVP-502, MVP-408, MVP-411  
-**Design**: DES-008〜010 + 最終 polish  
-**PM**: MVP-603〜605, MVP-006
+**BE**: 阿部（407）/ 菅家（206, 204 Infra）  
+**FE**: 柴沼（502, 408, 411）  
+**Design**: 王（DES-008〜010, DES-004, DES-007）  
+**PM**: 中村（603〜605, 006）
 
 - [ ] MVP-407, MVP-501〜503（Should 消化）
 - [ ] MVP-603〜605（README、スクショ、AI ログ）
@@ -509,3 +530,4 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 | 2026-05-24 | タスク・追跡項目をチェックボックス形式に統一 |
 | 2026-05-24 | コードベース再調査: 予約 DB 化・Auth・メディア基盤を反映。MVP-009/104/209/305/410/411/606 を追加 |
 | 2026-05-24 | 担当別早見表（§4.0〜4.1）、Phase 7 デザインタスク（DES-001〜010）、FE/BE/Design 並行順序（§6.0）を追加 |
+| 2026-05-24 | 全タスクに担当者名を追加（中村=PM、菅家=Infra/BE、阿部=BE、柴沼=FE、王=Design/FE） |
