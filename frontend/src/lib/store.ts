@@ -89,6 +89,8 @@ interface AppState {
   hudMenuOpen: boolean;
   mobileNavOpen: boolean;
   thirdCameraDistance: number;
+  /** Auto 時にクローン追従カメラ（false = 自由視点） */
+  cameraFollowAgent: boolean;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
   humanFriends: HumanFriend[];
@@ -126,6 +128,7 @@ interface AppState {
   setMobileNavOpen: (open: boolean) => void;
   toggleMobileNav: () => void;
   adjustThirdCameraDistance: (delta: number) => void;
+  setCameraFollowAgent: (follow: boolean) => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
   setChatTarget: (target: ChatTarget) => void;
@@ -165,7 +168,8 @@ export const useAppStore = create<AppState>((set) => ({
   chatPanelOpen: true,
   hudMenuOpen: true,
   mobileNavOpen: false,
-  thirdCameraDistance: 4.1,
+  thirdCameraDistance: 5.4,
+  cameraFollowAgent: true,
   chatTrigger: null,
   myFriendId: generateFriendId(),
   humanFriends: DEMO_HUMAN_FRIENDS,
@@ -220,6 +224,7 @@ export const useAppStore = create<AppState>((set) => ({
         Math.max(2.5, Number((s.thirdCameraDistance + delta).toFixed(2))),
       ),
     })),
+  setCameraFollowAgent: (cameraFollowAgent) => set({ cameraFollowAgent }),
   setChatTrigger: (chatTrigger) => set({ chatTrigger }),
   addHumanFriend: (friendId) => {
     const cleaned = friendId.trim().toUpperCase();

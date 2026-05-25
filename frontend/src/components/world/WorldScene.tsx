@@ -41,6 +41,17 @@ const RESIDENT_WANDER_RADIUS = 2.6; // 部屋住人が歩き回る半径
 const NPC_IDLE_MIN_S = 1.8; // 目的地到達後の待機時間
 const NPC_IDLE_MAX_S = 4;
 const AUTO_CYCLE = STAY_DURATION + TRAVEL_DURATION;
+/** デフォルトの第三者カメラ距離（ズーム基準） */
+const DEFAULT_THIRD_CAMERA_DIST = 5.4;
+/** Auto 時の向き補間（大きいほど素早く追従） */
+const AUTO_ROT_SMOOTH = 3.2;
+
+function lerpAngle(current: number, target: number, alpha: number): number {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * alpha;
+}
 
 /** 自動巡回パス上で pos に最も近い地点のウェイポイント index と経過時間 */
 function nearestWaypointOnPath(pos: THREE.Vector3): {
@@ -95,6 +106,8 @@ export default function WorldScene() {
   const setCurrentSpeaker = useAppStore((s) => s.setCurrentSpeaker);
   const currentSpeaker = useAppStore((s) => s.currentSpeaker);
   const controlMode = useAppStore((s) => s.controlMode);
+  const cameraFollowAgent = useAppStore((s) => s.cameraFollowAgent);
+  const setCameraFollowAgent = useAppStore((s) => s.setCameraFollowAgent);
   const thirdCameraDistance = useAppStore((s) => s.thirdCameraDistance);
   const manualInput = useAppStore((s) => s.manualInput);
   const chatTarget = useAppStore((s) => s.chatTarget);
@@ -120,10 +133,13 @@ export default function WorldScene() {
   // カメラ：OrbitControls をユーザー操作の主にする。target は Mira を追従し、
   // カメラ自身も同じデルタで移動 → 「相対視点を保ったまま追従」
   const controlsRef = useRef<OrbitControlsImpl>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const initialized = useRef(false);
   const prevControlModeRef = useRef(controlMode);
   const autoTransition = useRef<AutoPathTransition | null>(null);
+  const miraRotSmooth = useRef(0);
+  const prevCameraFollowRef = useRef(cameraFollowAgent);
+  const orbitDragRef = useRef({ active: false, x: 0, y: 0 });
   const cameraOffset = useRef(new THREE.Vector3());
   const cameraTarget = useRef(new THREE.Vector3());
   const cameraLookAt = useRef(new THREE.Vector3());
@@ -248,6 +264,47 @@ export default function WorldScene() {
     setRoomNear(activeRooms.map(() => false));
   }, [activeRooms]);
 
+  useEffect(() => {
+    if (cameraFollowAgent && !prevCameraFollowRef.current) {
+      initialized.current = false;
+    }
+    prevCameraFollowRef.current = cameraFollowAgent;
+  }, [cameraFollowAgent]);
+
+  const ORBIT_DRAG_PX = 10;
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (useAppStore.getState().controlMode !== 'auto') return;
+      if (!useAppStore.getState().cameraFollowAgent) return;
+      orbitDragRef.current = { active: true, x: e.clientX, y: e.clientY };
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      const drag = orbitDragRef.current;
+      if (!drag.active) return;
+      if (useAppStore.getState().controlMode !== 'auto') return;
+      if (!useAppStore.getState().cameraFollowAgent) return;
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      if (dx * dx + dy * dy >= ORBIT_DRAG_PX * ORBIT_DRAG_PX) {
+        useAppStore.getState().setCameraFollowAgent(false);
+        orbitDragRef.current.active = false;
+      }
+    };
+    const onPointerUp = () => {
+      orbitDragRef.current.active = false;
+    };
+    canvas.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [gl]);
+
   // 部屋住人ローテーション: 全部屋に常に 1 人いる。60s ごとに roster index をシャッフル
   const rotateAgents = useCallback(() => {
     if (activeRooms.length === 0) {
@@ -335,6 +392,10 @@ export default function WorldScene() {
       !encounter;
 
     if (prevControlModeRef.current !== controlMode) {
+      if (controlMode === 'auto' && prevControlModeRef.current === 'manual') {
+        miraRotSmooth.current = miraRot;
+        setCameraFollowAgent(true);
+      }
       if (
         controlMode === 'auto' &&
         prevControlModeRef.current === 'manual' &&
@@ -439,7 +500,6 @@ export default function WorldScene() {
       desiredRot = dir.lengthSq() > 1e-6 ? Math.atan2(dir.x, dir.z) : miraRot;
       activity = `移動中 · ${WAYPOINTS[tr.afterIndex].name}`;
       setMiraPos(nextPos);
-      setMiraRot(desiredRot);
       if (miraActivity !== activity) setMiraActivity(activity);
       if (k >= 1) {
         const { elapsed } = nearestWaypointOnPath(tr.to);
@@ -470,14 +530,18 @@ export default function WorldScene() {
         return nextPos;
       });
       const dir = toWp.pos.clone().sub(fromWp.pos);
-      desiredRot =
-        localTime < STAY_DURATION
-          ? Math.atan2(
-              -fromWp.pos.x || 0.001,
-              -fromWp.pos.z || 0.001,
-            )
-          : Math.atan2(dir.x, dir.z);
-      setMiraRot(desiredRot);
+      if (localTime < STAY_DURATION) {
+        desiredRot = Math.atan2(
+          -fromWp.pos.x || 0.001,
+          -fromWp.pos.z || 0.001,
+        );
+      } else {
+        const moveDir = nextPos.clone().sub(fromWp.pos);
+        desiredRot =
+          moveDir.lengthSq() > 1e-6
+            ? Math.atan2(moveDir.x, moveDir.z)
+            : Math.atan2(dir.x, dir.z);
+      }
       setMiraActivity(activity);
     }
 
@@ -526,7 +590,6 @@ export default function WorldScene() {
             ? faceCenterOfOthers('mira', nextPos)
             : faceSpeaker(nextPos);
         desiredRot = miraConversationRot;
-        setMiraRot(miraConversationRot);
       }
     } else if (encounter && encounterAvatarNameRef.current) {
       // エンカウント中: 相手アバターはMiraを向く、もう一方はデフォルト
@@ -719,14 +782,37 @@ export default function WorldScene() {
     }
     if (freeRotsChanged) setFreeRots(newFreeRots);
 
-    // カメラ追従: OrbitControls の target を Mira に lerp、カメラも同じデルタ移動
-    if (controlsRef.current) {
-      const facingX = Math.sin(desiredRot);
-      const facingZ = Math.cos(desiredRot);
+    let displayRot = desiredRot;
+    if (controlMode === 'manual') {
+      miraRotSmooth.current = desiredRot;
+      displayRot = desiredRot;
+    } else {
+      const rotAlpha = 1 - Math.exp(-AUTO_ROT_SMOOTH * delta);
+      miraRotSmooth.current = lerpAngle(
+        miraRotSmooth.current,
+        desiredRot,
+        rotAlpha,
+      );
+      displayRot = miraRotSmooth.current;
+      if (Math.abs(displayRot - miraRot) > 0.002) {
+        setMiraRot(displayRot);
+      }
+    }
+
+    // カメラ追従（Manual 常時 / Auto は追跡モード時のみ）
+    const shouldFollowCamera =
+      controlMode === 'manual' ||
+      (controlMode === 'auto' && cameraFollowAgent);
+
+    if (controlsRef.current && shouldFollowCamera) {
+      const facingX = Math.sin(displayRot);
+      const facingZ = Math.cos(displayRot);
       cameraTarget.current.set(nextPos.x, nextPos.y, nextPos.z);
 
       const dist = thirdCameraDistance;
-      const height = 2.45 * (dist / 4.1);
+      const height = 2.45 * (dist / DEFAULT_THIRD_CAMERA_DIST);
+      const cameraLerp = controlMode === 'auto' ? 0.1 : 0.14;
+      const targetLerp = controlMode === 'auto' ? 0.12 : 0.18;
       cameraOffset.current.set(-facingX * dist, height, -facingZ * dist);
       cameraLookAt.current.set(
         nextPos.x + facingX * 1.6,
@@ -740,10 +826,12 @@ export default function WorldScene() {
         controlsRef.current.target.copy(cameraLookAt.current);
         initialized.current = true;
       } else {
-        camera.position.lerp(desiredCameraPos, 0.14);
-        controlsRef.current.target.lerp(cameraLookAt.current, 0.18);
+        camera.position.lerp(desiredCameraPos, cameraLerp);
+        controlsRef.current.target.lerp(cameraLookAt.current, targetLerp);
       }
       camera.lookAt(controlsRef.current.target);
+    } else if (controlsRef.current) {
+      controlsRef.current.update();
     }
 
     // publish to store
@@ -752,7 +840,7 @@ export default function WorldScene() {
         id: 'mira',
         name: playerName,
         position: [nextPos.x, nextPos.y, nextPos.z],
-        rotationY: desiredRot,
+        rotationY: displayRot,
         activity,
       },
       {
@@ -789,10 +877,14 @@ export default function WorldScene() {
     <>
       <OrbitControls
         ref={controlsRef}
-        enabled={false}
+        enabled={controlMode === 'auto' && !cameraFollowAgent}
         enablePan={false}
         enableZoom={false}
-        enableRotate={false}
+        enableRotate={controlMode === 'auto' && !cameraFollowAgent}
+        minPolarAngle={0.35}
+        maxPolarAngle={Math.PI / 2 - 0.08}
+        minDistance={2.5}
+        maxDistance={7.5}
       />
       <ambientLight intensity={0.35} color="#a378ff" />
       <hemisphereLight args={['#a378ff', '#06060c', 0.6]} />

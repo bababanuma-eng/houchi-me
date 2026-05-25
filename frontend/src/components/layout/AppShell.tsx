@@ -14,6 +14,7 @@ import VirtualWorld from '@/components/world/VirtualWorld';
 import ChatPanel from '@/components/chat/ChatPanel';
 import Overlays from '@/components/overlay/Overlays';
 import EncounterOverlay from '@/components/encounter/EncounterOverlay';
+import CameraFollowButton from '@/components/main/CameraFollowButton';
 
 export default function AppShell() {
   const worldViewportRef = useRef<HTMLElement>(null);
@@ -68,6 +69,9 @@ export default function AppShell() {
               <VirtualWorld />
             </div>
             <div className="pointer-events-none absolute inset-0 z-10">
+              <div className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 justify-center px-3 lg:top-4">
+                <CameraFollowButton />
+              </div>
               <WorldHudMenu />
               <div className="absolute bottom-2 left-1/2 max-w-[calc(100%-1rem)] -translate-x-1/2 lg:bottom-6">
                 <TalkButton />
