@@ -3,7 +3,6 @@
 import { create } from 'zustand';
 import type {
   ChatTarget,
-  CameraMode,
   Clone,
   CloneActivity,
   ControlMode,
@@ -81,12 +80,17 @@ interface AppState {
   feedback: Record<string, Feedback>;
   viewTab: ViewTab;
   controlMode: ControlMode;
-  cameraMode: CameraMode;
   worldAvatars: WorldAvatarState[];
   currentSpeaker: number;
   bootDone: boolean;
   hydrated: boolean;
   openOverlay: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null;
+  chatPanelOpen: boolean;
+  hudMenuOpen: boolean;
+  mobileNavOpen: boolean;
+  thirdCameraDistance: number;
+  /** Auto 時にクローン追従カメラ（false = 自由視点） */
+  cameraFollowAgent: boolean;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
   humanFriends: HumanFriend[];
@@ -112,12 +116,19 @@ interface AppState {
   pushFeedback: (feedback: Feedback) => void;
   setViewTab: (tab: ViewTab) => void;
   setControlMode: (mode: ControlMode) => void;
-  setCameraMode: (mode: CameraMode) => void;
   setWorldAvatars: (a: WorldAvatarState[]) => void;
   setCurrentSpeaker: (i: number) => void;
   setBootDone: (v: boolean) => void;
   setHydrated: (v: boolean) => void;
   setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null) => void;
+  setChatPanelOpen: (open: boolean) => void;
+  toggleChatPanel: () => void;
+  setHudMenuOpen: (open: boolean) => void;
+  toggleHudMenu: () => void;
+  setMobileNavOpen: (open: boolean) => void;
+  toggleMobileNav: () => void;
+  adjustThirdCameraDistance: (delta: number) => void;
+  setCameraFollowAgent: (follow: boolean) => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
   setChatTarget: (target: ChatTarget) => void;
@@ -149,12 +160,16 @@ export const useAppStore = create<AppState>((set) => ({
   feedback: {},
   viewTab: 'world',
   controlMode: 'auto',
-  cameraMode: 'third',
   worldAvatars: [],
   currentSpeaker: 0,
   bootDone: false,
   hydrated: false,
   openOverlay: null,
+  chatPanelOpen: true,
+  hudMenuOpen: true,
+  mobileNavOpen: false,
+  thirdCameraDistance: 7.0,
+  cameraFollowAgent: true,
   chatTrigger: null,
   myFriendId: generateFriendId(),
   humanFriends: DEMO_HUMAN_FRIENDS,
@@ -190,12 +205,26 @@ export const useAppStore = create<AppState>((set) => ({
       controlMode,
       manualInput: controlMode === 'manual' ? s.manualInput : { x: 0, z: 0 },
     })),
-  setCameraMode: (cameraMode) => set({ cameraMode }),
   setWorldAvatars: (worldAvatars) => set({ worldAvatars }),
   setCurrentSpeaker: (currentSpeaker) => set({ currentSpeaker }),
   setBootDone: (bootDone) => set({ bootDone }),
   setHydrated: (hydrated) => set({ hydrated }),
   setOpenOverlay: (openOverlay) => set({ openOverlay }),
+  setChatPanelOpen: (chatPanelOpen) => set({ chatPanelOpen }),
+  toggleChatPanel: () =>
+    set((s) => ({ chatPanelOpen: !s.chatPanelOpen })),
+  setHudMenuOpen: (hudMenuOpen) => set({ hudMenuOpen }),
+  toggleHudMenu: () => set((s) => ({ hudMenuOpen: !s.hudMenuOpen })),
+  setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
+  toggleMobileNav: () => set((s) => ({ mobileNavOpen: !s.mobileNavOpen })),
+  adjustThirdCameraDistance: (delta) =>
+    set((s) => ({
+      thirdCameraDistance: Math.min(
+        9.5,
+        Math.max(2.5, Number((s.thirdCameraDistance + delta).toFixed(2))),
+      ),
+    })),
+  setCameraFollowAgent: (cameraFollowAgent) => set({ cameraFollowAgent }),
   setChatTrigger: (chatTrigger) => set({ chatTrigger }),
   addHumanFriend: (friendId) => {
     const cleaned = friendId.trim().toUpperCase();

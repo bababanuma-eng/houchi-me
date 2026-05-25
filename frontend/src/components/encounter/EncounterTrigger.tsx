@@ -8,7 +8,13 @@ const WILD_AVATARS = [
   { name: 'Echo', color: '#4ff5e7' },
 ];
 
-export default function EncounterTrigger() {
+export default function EncounterTrigger({
+  embedded = false,
+  compact = false,
+}: {
+  embedded?: boolean;
+  compact?: boolean;
+}) {
   const encounter = useAppStore((s) => s.encounter);
   const clone = useAppStore((s) => s.clone);
   const topics = useAppStore((s) => s.topics);
@@ -53,15 +59,36 @@ export default function EncounterTrigger() {
     <button
       onClick={handleStart}
       disabled={loading}
-      className="pointer-events-auto flex w-full items-center justify-center rounded-full border border-white/[0.08] px-3 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.38)] transition-colors hover:border-[#caa85e]/22 hover:bg-white/[0.05] disabled:opacity-60"
-      style={{
-        background: 'rgba(12, 10, 26, 0.72)',
-        backdropFilter: 'blur(20px) saturate(170%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(170%)',
-      }}
+      className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl border border-white/[0.08] text-center transition-colors hover:border-[var(--color-neon-pink)]/35 hover:bg-[var(--color-neon-pink)]/8 disabled:opacity-60 ${
+        compact ? 'w-full px-2 py-2' : 'w-full px-3 py-2.5'
+      } ${
+        embedded
+          ? 'pointer-events-auto'
+          : 'pointer-events-auto rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.38)]'
+      }`}
+      style={
+        embedded
+          ? undefined
+          : {
+              background: 'rgba(12, 10, 26, 0.72)',
+              backdropFilter: 'blur(20px) saturate(170%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(170%)',
+            }
+      }
+      aria-label="クローンを他のエージェントのもとへ送る"
     >
-      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-white/76">
-        {loading ? 'Preparing…' : 'Talk'}
+      <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--color-neon-pink)]">
+        Clone → Others
+      </span>
+      <span
+        className={`font-medium text-white/92 ${compact ? 'text-[11px] leading-tight' : 'text-[13px]'}`}
+      >
+        {loading ? '準備中…' : '他クローンと出会わせる'}
+      </span>
+      <span
+        className={`text-white/45 ${compact ? 'text-[9px] leading-snug' : 'text-[10px]'}`}
+      >
+        {compact ? 'Sage・Echo など' : 'Sage・Echo などと話し始める'}
       </span>
     </button>
   );
