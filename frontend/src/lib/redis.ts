@@ -17,6 +17,8 @@ export const ROOM_CHAT_TTL = 60 * 30; // 30分
 
 export interface EncounterSession {
   cloneId: string;
+  cloneName: string;
+  avatarName: string;
   cloneContext: string;
   history: { role: 'user' | 'model'; content: string }[];
 }

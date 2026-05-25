@@ -1,8 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { buildContext } from '@/lib/buildContext';
 import { ENCOUNTER_TTL, getRedis } from '@/lib/redis';
-import type { Clone, Topic } from '@/types';
+import type { Clone, EncounterMemory, Topic } from '@/types';
 
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -16,7 +17,26 @@ export async function POST(req: Request) {
   const body = (await req.json()) as StartRequest;
   const { clone, recentTopics, avatarName } = body;
 
-  const context = buildContext(clone, recentTopics);
+  const recentMemories: EncounterMemory[] = [];
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceRoleKey) {
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data } = await supabase
+      .from('encounter_logs')
+      .select('summary')
+      .eq('clone_id', clone.id)
+      .not('summary', 'is', null)
+      .order('occurred_at', { ascending: false })
+      .limit(5);
+    if (data) {
+      for (const row of data) {
+        if (row.summary) recentMemories.push(row.summary as EncounterMemory);
+      }
+    }
+  }
+
+  const context = buildContext(clone, recentTopics, recentMemories);
 
   const prompt = `あなたは「叡智の図書館」という仮想空間を探索しているクローンAIです。
 今、${clone.name} というクローンに出会いました。
@@ -45,6 +65,8 @@ ${context}
     `encounter:${sessionId}`,
     JSON.stringify({
       cloneId: clone.id,
+      cloneName: clone.name,
+      avatarName,
       cloneContext: context,
       history: [{ role: 'model', content: firstMessage }],
     }),
