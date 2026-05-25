@@ -22,15 +22,17 @@ export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  let dbError: string | null = null;
   if (supabaseUrl && serviceRoleKey && session.history.length > 1) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    await supabase.from('encounter_logs').insert({
+    const { error } = await supabase.from('encounter_logs').insert({
       clone_id: session.cloneId,
       dialogue: session.history,
     });
+    if (error) dbError = `${error.code}: ${error.message}`;
   }
 
   await getRedis().del(`encounter:${sessionId}`);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, dbError, cloneId: session.cloneId });
 }
