@@ -22,27 +22,40 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const c = await storage.getClone();
-      if (cancelled) return;
-      if (!c) {
-        router.replace('/onboarding');
-        return;
+      try {
+        const c = await storage.getClone();
+        if (cancelled) return;
+        if (!c) {
+          router.replace('/onboarding');
+          return;
+        }
+        setClone(c);
+        const [topics, activities, latestActivity, messages, feedback] = await Promise.all([
+          storage.getTopics(),
+          storage.getTodayActivities(),
+          storage.getLatestActivity(),
+          storage.getMessages(),
+          storage.getFeedback(),
+        ]);
+        if (cancelled) return;
+        setTopics(topics);
+        setActivities(activities);
+        setLatestActivity(latestActivity);
+        setMessages(messages);
+        setFeedback(feedback);
+      } catch (error) {
+        console.warn('Failed to hydrate app data:', error);
+        if (cancelled) return;
+        setTopics([]);
+        setActivities([]);
+        setLatestActivity(null);
+        setMessages([]);
+        setFeedback({});
+      } finally {
+        if (!cancelled) {
+          setHydrating(false);
+        }
       }
-      setClone(c);
-      const [topics, activities, latestActivity, messages, feedback] = await Promise.all([
-        storage.getTopics(),
-        storage.getTodayActivities(),
-        storage.getLatestActivity(),
-        storage.getMessages(),
-        storage.getFeedback(),
-      ]);
-      if (cancelled) return;
-      setTopics(topics);
-      setActivities(activities);
-      setLatestActivity(latestActivity);
-      setMessages(messages);
-      setFeedback(feedback);
-      setHydrating(false);
     })();
     return () => {
       cancelled = true;
