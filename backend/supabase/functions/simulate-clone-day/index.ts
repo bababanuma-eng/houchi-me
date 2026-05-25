@@ -174,12 +174,9 @@ Deno.serve(async (req) => {
     }
     const activities = buildActivities(topic);
     const note = buildNote(topic);
-    const topicId = crypto.randomUUID();
-    const createdAt = new Date().toISOString();
 
-    const { error: topicError } = await supabase.from('topics').upsert(
+    const { data: savedTopic, error: topicError } = await supabase.from('topics').upsert(
       {
-        id: topicId,
         clone_id: cloneId,
         date_key: dateKey,
         title: topic.title,
@@ -190,10 +187,13 @@ Deno.serve(async (req) => {
       {
         onConflict: 'clone_id,date_key',
       },
-    );
-    if (topicError) {
+    ).select('*').single();
+    if (topicError || !savedTopic) {
       throw new Error(`Failed to save topic: ${topicError.message}`);
     }
+
+    const topicId = savedTopic.id as string;
+    const createdAt = savedTopic.created_at as string;
 
     const { error: activityError } = await supabase.from('clone_activities').insert(
       activities.map((activity) => ({
