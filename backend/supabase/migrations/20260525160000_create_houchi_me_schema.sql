@@ -2,6 +2,17 @@
 -- frontend/src/types/index.ts の型定義と 1:1 対応
 
 -- ----------------------------------------------------------------
+-- updated_at 自動更新トリガー
+-- ----------------------------------------------------------------
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- ----------------------------------------------------------------
 -- profiles
 -- ----------------------------------------------------------------
 create table if not exists public.profiles (
@@ -21,6 +32,10 @@ create policy "profiles: own read"
 create policy "profiles: own update"
   on public.profiles for update
   using (auth.uid() = id);
+
+create trigger profiles_set_updated_at
+  before update on public.profiles
+  for each row execute procedure public.set_updated_at();
 
 -- auth.users INSERT 時に profiles を自動作成
 create or replace function public.handle_new_user()
@@ -78,6 +93,10 @@ create policy "clones: own update"
 create policy "clones: own delete"
   on public.clones for delete
   using (auth.uid() = user_id);
+
+create trigger clones_set_updated_at
+  before update on public.clones
+  for each row execute procedure public.set_updated_at();
 
 -- ----------------------------------------------------------------
 -- topics
