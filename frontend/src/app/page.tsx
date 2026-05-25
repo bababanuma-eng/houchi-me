@@ -14,6 +14,8 @@ export default function Home() {
   const clone = useAppStore((s) => s.clone);
   const setClone = useAppStore((s) => s.setClone);
   const setTopics = useAppStore((s) => s.setTopics);
+  const setActivities = useAppStore((s) => s.setActivities);
+  const setLatestActivity = useAppStore((s) => s.setLatestActivity);
   const setMessages = useAppStore((s) => s.setMessages);
   const setFeedback = useAppStore((s) => s.setFeedback);
 
@@ -27,13 +29,17 @@ export default function Home() {
         return;
       }
       setClone(c);
-      const [topics, messages, feedback] = await Promise.all([
+      const [topics, activities, latestActivity, messages, feedback] = await Promise.all([
         storage.getTopics(),
+        storage.getTodayActivities(),
+        storage.getLatestActivity(),
         storage.getMessages(),
         storage.getFeedback(),
       ]);
       if (cancelled) return;
       setTopics(topics);
+      setActivities(activities);
+      setLatestActivity(latestActivity);
       setMessages(messages);
       setFeedback(feedback);
       setHydrating(false);
@@ -41,7 +47,15 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [router, setClone, setTopics, setMessages, setFeedback]);
+  }, [
+    router,
+    setClone,
+    setTopics,
+    setActivities,
+    setLatestActivity,
+    setMessages,
+    setFeedback,
+  ]);
 
   if (!clone || hydrating || showLoader) {
     return (
