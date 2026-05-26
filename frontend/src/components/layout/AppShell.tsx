@@ -22,37 +22,65 @@ export default function AppShell() {
   const topics = useAppStore((s) => s.topics);
   const setTopics = useAppStore((s) => s.setTopics);
   const addTopic = useAppStore((s) => s.addTopic);
+  const topicGenerationRetryKey = useAppStore((s) => s.topicGenerationRetryKey);
+  const setTopicGenerationStatus = useAppStore((s) => s.setTopicGenerationStatus);
   const setActivities = useAppStore((s) => s.setActivities);
   const setLatestActivity = useAppStore((s) => s.setLatestActivity);
 
   useEffect(() => {
     if (!clone) return;
     const key = todayKey();
-    if (topics.some((t) => t.dateKey === key)) return;
+    if (topics.some((t) => t.dateKey === key)) {
+      setTopicGenerationStatus('idle');
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const exists = await storage.getTodaysTopic(key);
-      if (exists) {
-        if (!cancelled) addTopic(exists);
-        return;
-      }
-      const history = await storage.getTopics();
-      const topic = await engine.generateTodaysTopic(clone, history);
-      await storage.saveTopic(topic);
-      const [activities, latestActivity] = await Promise.all([
-        storage.getTodayActivities(),
-        storage.getLatestActivity(),
-      ]);
-      if (!cancelled) {
-        setTopics([topic, ...history.filter((t) => t.id !== topic.id)]);
-        setActivities(activities);
-        setLatestActivity(latestActivity);
+      setTopicGenerationStatus('loading');
+      try {
+        const exists = await storage.getTodaysTopic(key);
+        if (exists) {
+          if (!cancelled) {
+            addTopic(exists);
+            setTopicGenerationStatus('idle');
+          }
+          return;
+        }
+        const history = await storage.getTopics();
+        const topic = await engine.generateTodaysTopic(clone, history);
+        await storage.saveTopic(topic);
+        const [activities, latestActivity] = await Promise.all([
+          storage.getTodayActivities(),
+          storage.getLatestActivity(),
+        ]);
+        if (!cancelled) {
+          setTopics([topic, ...history.filter((t) => t.id !== topic.id)]);
+          setActivities(activities);
+          setLatestActivity(latestActivity);
+          setTopicGenerationStatus('idle');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTopicGenerationStatus(
+            'error',
+            error instanceof Error ? error.message : '今日のTopic生成に失敗しました',
+          );
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [clone, topics, setTopics, addTopic, setActivities, setLatestActivity]);
+  }, [
+    clone,
+    topics,
+    topicGenerationRetryKey,
+    setTopics,
+    addTopic,
+    setTopicGenerationStatus,
+    setActivities,
+    setLatestActivity,
+  ]);
 
   return (
     <div className="relative z-10 flex h-screen min-h-0">

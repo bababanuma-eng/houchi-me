@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { storage } from '@/lib/storage';
 import { engine } from '@/lib/clone-engine';
+import { EmptyState, ErrorState, LoadingState } from '@/components/state/AsyncState';
 import type { DailyAnswerInput, EncounterLog, HumanFriend } from '@/types';
 
 interface HobbyEntry {
@@ -270,11 +271,9 @@ function EncounterLogsOverlay({ onClose }: { onClose: () => void }) {
       onClose={onClose}
     >
       {loading ? (
-        <div className="text-[12px] text-white/45">読み込み中...</div>
+        <LoadingState compact title="会話ログを読み込み中..." />
       ) : logs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.01] p-4 text-[12px] text-white/40">
-          まだ会話ログはありません。
-        </div>
+        <EmptyState compact title="まだ会話ログはありません" />
       ) : (
         <div className="space-y-3">
           {logs.map((log) => (
@@ -467,9 +466,7 @@ function DailyQuestionsOverlay({ onClose }: { onClose: () => void }) {
         ))}
 
         {error && (
-          <div className="rounded-xl border border-[var(--color-neon-pink)]/40 bg-[var(--color-neon-pink)]/10 px-3 py-2 text-[12px] text-[var(--color-neon-pink)]">
-            {error}
-          </div>
+          <ErrorState compact title="送信に失敗しました" description={error} />
         )}
 
         {summary && (

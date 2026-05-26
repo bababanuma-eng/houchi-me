@@ -38,9 +38,6 @@ export default function ChatView() {
       text: t,
       createdAt: nowIso(),
     };
-    if (!persistsMessages) {
-      await storage.appendMessage(userMsg);
-    }
     appendMessage(userMsg);
     setText('');
 
@@ -54,6 +51,9 @@ export default function ChatView() {
     appendMessage(placeholder);
 
     try {
+      if (!persistsMessages) {
+        await storage.appendMessage(userMsg);
+      }
       let acc = '';
       for await (const chunk of engine.chatStream(clone, messages, t)) {
         acc += chunk;

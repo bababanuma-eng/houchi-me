@@ -15,6 +15,8 @@ import type {
   WorldAvatarState,
 } from '@/types';
 
+type AsyncStatus = 'idle' | 'loading' | 'error';
+
 // 自分のフレンドID（クローン作成時に発行される想定。BE が発行する仕様にする予定）
 function generateFriendId(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -74,6 +76,9 @@ interface RoomChatState {
 interface AppState {
   clone: Clone | null;
   topics: Topic[];
+  topicGenerationStatus: AsyncStatus;
+  topicGenerationError: string | null;
+  topicGenerationRetryKey: number;
   activities: CloneActivity[];
   latestActivity: CloneActivity | null;
   messages: Message[];
@@ -107,6 +112,8 @@ interface AppState {
   setClone: (clone: Clone | null) => void;
   setTopics: (topics: Topic[]) => void;
   addTopic: (topic: Topic) => void;
+  setTopicGenerationStatus: (status: AsyncStatus, error?: string | null) => void;
+  retryTopicGeneration: () => void;
   setActivities: (activities: CloneActivity[]) => void;
   setLatestActivity: (activity: CloneActivity | null) => void;
   setMessages: (messages: Message[]) => void;
@@ -154,6 +161,9 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   clone: null,
   topics: [],
+  topicGenerationStatus: 'idle',
+  topicGenerationError: null,
+  topicGenerationRetryKey: 0,
   activities: [],
   latestActivity: null,
   messages: [],
@@ -187,6 +197,17 @@ export const useAppStore = create<AppState>((set) => ({
   setTopics: (topics) => set({ topics }),
   addTopic: (topic) =>
     set((s) => ({ topics: [topic, ...s.topics.filter((t) => t.id !== topic.id)] })),
+  setTopicGenerationStatus: (topicGenerationStatus, error = null) =>
+    set({
+      topicGenerationStatus,
+      topicGenerationError: topicGenerationStatus === 'error' ? error : null,
+    }),
+  retryTopicGeneration: () =>
+    set((s) => ({
+      topicGenerationStatus: 'idle',
+      topicGenerationError: null,
+      topicGenerationRetryKey: s.topicGenerationRetryKey + 1,
+    })),
   setActivities: (activities) => set({ activities }),
   setLatestActivity: (latestActivity) => set({ latestActivity }),
   setMessages: (messages) => set({ messages }),

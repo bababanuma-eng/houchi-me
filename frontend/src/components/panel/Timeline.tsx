@@ -1,6 +1,7 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
+import { EmptyState } from '@/components/state/AsyncState';
 
 const ACTIVITY_COLORS = [
   'var(--color-neon-violet)',
@@ -36,11 +37,11 @@ export default function Timeline() {
       </div>
 
       {activities.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-3 py-5 text-center text-[12px] leading-relaxed text-white/45">
-          まだ今日の活動はありません。
-          <br />
-          Topic が生成されると活動履歴が表示されます。
-        </div>
+        <EmptyState
+          compact
+          title="まだ今日の活動はありません"
+          description="Topic が生成されると活動履歴が表示されます。"
+        />
       ) : (
         <div className="relative pl-4">
           <div className="absolute left-1.5 top-1 bottom-1 w-px bg-white/[0.08]" />

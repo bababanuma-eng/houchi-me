@@ -2,7 +2,8 @@
 
 import { useAppStore } from '@/lib/store';
 import { storage } from '@/lib/storage';
-import { nowIso, uuid, clamp } from '@/lib/util';
+import { nowIso, clamp } from '@/lib/util';
+import { ErrorState, LoadingState } from '@/components/state/AsyncState';
 import type { FeedbackKind } from '@/types';
 
 const KIND_LABELS: Record<FeedbackKind, string> = {
@@ -18,6 +19,9 @@ export default function TodayTopicView() {
   const pushFeedback = useAppStore((s) => s.pushFeedback);
   const setClone = useAppStore((s) => s.setClone);
   const setViewTab = useAppStore((s) => s.setViewTab);
+  const topicGenerationStatus = useAppStore((s) => s.topicGenerationStatus);
+  const topicGenerationError = useAppStore((s) => s.topicGenerationError);
+  const retryTopicGeneration = useAppStore((s) => s.retryTopicGeneration);
 
   const onFeedback = async (kind: FeedbackKind) => {
     if (!topic || !clone) return;
@@ -38,17 +42,24 @@ export default function TodayTopicView() {
   };
 
   if (!topic) {
+    if (topicGenerationStatus === 'error') {
+      return (
+        <div className="mx-auto max-w-3xl">
+          <ErrorState
+            title="今日のTopicを生成できませんでした"
+            description={topicGenerationError ?? '時間をおいてもう一度試してください。'}
+            action={{ label: '再試行', onClick: retryTopicGeneration }}
+          />
+        </div>
+      );
+    }
+
     return (
-      <div className="mx-auto max-w-3xl rounded-3xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
-        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">
-          Generating
-        </div>
-        <div className="mt-3 text-lg text-white/85">
-          今日のTopicを生成中…
-        </div>
-        <div className="mt-2 text-[12px] text-white/55">
-          クローンが書架と思索を辿っています
-        </div>
+      <div className="mx-auto max-w-3xl">
+        <LoadingState
+          title="今日のTopicを生成中…"
+          description="クローンが書架と思索を辿っています"
+        />
       </div>
     );
   }

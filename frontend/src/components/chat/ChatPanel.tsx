@@ -47,9 +47,6 @@ export default function ChatPanel() {
         text: t,
         createdAt: nowIso(),
       };
-      if (!persistsMessages) {
-        await storage.appendMessage(userMsg);
-      }
       appendMessage(userMsg);
       setText('');
 
@@ -63,6 +60,9 @@ export default function ChatPanel() {
       appendMessage(placeholder);
 
       try {
+        if (!persistsMessages) {
+          await storage.appendMessage(userMsg);
+        }
         let acc = '';
         if (fixedReply) {
           for (const ch of FIXED_REPLY_TEXT) {
