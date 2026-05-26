@@ -1,8 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { buildContext } from '@/lib/buildContext';
 import { ENCOUNTER_TTL, getRedis } from '@/lib/redis';
-import type { Clone, Topic } from '@/types';
+import { getWildAvatarProfile } from '@/lib/wildAvatarProfiles';
+import type { Clone, EncounterMemory, Topic } from '@/types';
 
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -16,19 +18,40 @@ export async function POST(req: Request) {
   const body = (await req.json()) as StartRequest;
   const { clone, recentTopics, avatarName } = body;
 
-  const context = buildContext(clone, recentTopics);
+  const recentMemories: EncounterMemory[] = [];
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceRoleKey) {
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data } = await supabase
+      .from('encounter_logs')
+      .select('summary')
+      .eq('clone_id', clone.id)
+      .not('summary', 'is', null)
+      .order('occurred_at', { ascending: false })
+      .limit(5);
+    if (data) {
+      for (const row of data) {
+        if (row.summary) recentMemories.push(row.summary as EncounterMemory);
+      }
+    }
+  }
 
-  const prompt = `あなたは「叡智の図書館」という仮想空間を探索しているクローンAIです。
-今、${clone.name} というクローンに出会いました。
-以下のプロフィールを踏まえて、自然な会話の口火を切ってください。
+  const context = buildContext(clone, recentTopics, recentMemories);
+  const avatarProfile = getWildAvatarProfile(avatarName);
+  const avatarSystemInstruction = avatarProfile?.systemInstruction ?? `あなたは「叡智の図書館」を探索しているクローンAIです。`;
+
+  const prompt = `${avatarSystemInstruction}
+
+今、${clone.name} というクローンに出会いました。相手のプロフィールは以下の通りです。
 
 ${context}
 
-ルール:
+会話の始め方:
 - 1〜3文の短い発話で始める
-- 相手の興味や最近の探索に絡めた話題を振る
+- 自分の熱狂・体験を起点にしながら、相手の世界と接点を見つけて話しかける
+- 相手の好き・嫌いどちらを入口にしても良い（苦手なものを掘り下げるのも歓迎）
 - 名前を呼びかけても良い
-- 日本語で話す
 
 会話を始めてください。`;
 
@@ -45,6 +68,9 @@ ${context}
     `encounter:${sessionId}`,
     JSON.stringify({
       cloneId: clone.id,
+      cloneName: clone.name,
+      avatarName,
+      avatarSystemInstruction,
       cloneContext: context,
       history: [{ role: 'model', content: firstMessage }],
     }),

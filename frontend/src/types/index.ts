@@ -59,6 +59,12 @@ export interface Message {
   createdAt: string;
 }
 
+export interface EncounterMemory {
+  resonated: string[];
+  newInterests: string[];
+  selfDiscovery: string;
+}
+
 export interface EncounterLogLine {
   speaker: string;
   text: string;
