@@ -24,7 +24,9 @@ export default function ConversationModule() {
   });
 
   const runTurnRef = useRef<((sessionId: string) => Promise<void>) | null>(null);
-  runTurnRef.current = async (sessionId: string) => {
+
+  useEffect(() => {
+    runTurnRef.current = async (sessionId: string) => {
     if (runningRef.current || sessionIdRef.current !== sessionId) return;
 
     const {
@@ -105,10 +107,13 @@ export default function ConversationModule() {
 
     if (sessionIdRef.current !== sessionId) return;
     timerRef.current = setTimeout(
-      () => runTurnRef.current?.(sessionId),
+      () => {
+        void runTurnRef.current?.(sessionId);
+      },
       TURN_DELAY_MS,
     );
-  };
+    };
+  }, []);
 
   useEffect(() => {
     if (!roomChat?.sessionId) {
@@ -123,14 +128,16 @@ export default function ConversationModule() {
     turnCountRef.current = 0;
 
     timerRef.current = setTimeout(
-      () => runTurnRef.current?.(roomChat.sessionId),
+      () => {
+        void runTurnRef.current?.(roomChat.sessionId);
+      },
       TURN_DELAY_MS,
     );
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [roomChat?.sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomChat?.sessionId]);
 
   const handleEnd = async () => {
     if (!roomChat) return;
@@ -149,6 +156,10 @@ export default function ConversationModule() {
   const agentColor = roomChat.roomColor;
   const cloneColor = '#a378ff';
   const cloneName = clone?.name ?? 'Mira';
+  const completedTurns = Math.min(
+    MAX_TURNS,
+    Math.floor(roomChat.messages.length / 2),
+  );
 
   return (
     <div className="pointer-events-auto" style={{ width: 'min(440px, calc(100% - 2rem))' }}>
@@ -235,7 +246,7 @@ export default function ConversationModule() {
           <div
             className="h-full transition-all duration-700"
             style={{
-              width: `${(turnCountRef.current / MAX_TURNS) * 100}%`,
+              width: `${(completedTurns / MAX_TURNS) * 100}%`,
               background: agentColor,
               boxShadow: `0 0 6px ${agentColor}`,
             }}

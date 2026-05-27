@@ -1,10 +1,9 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { buildContext } from '@/lib/buildContext';
+import { serverConfigError } from '@/lib/apiErrors';
+import { GEMINI_MODEL, getGemini } from '@/lib/gemini';
 import { ROOM_CHAT_TTL, getRedis } from '@/lib/redis';
 import type { Clone, Topic } from '@/types';
-
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface StartRequest {
   clone: Clone;
@@ -15,13 +14,14 @@ interface StartRequest {
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as StartRequest;
-  const { clone, recentTopics, avatarName, roomName, roomTopic } = body;
+  try {
+    const body = (await req.json()) as StartRequest;
+    const { clone, recentTopics, avatarName, roomName, roomTopic } = body;
 
   const cloneContext = buildContext(clone, recentTopics);
 
-  const response = await genai.models.generateContent({
-    model: 'gemini-2.5-flash',
+  const response = await getGemini().models.generateContent({
+    model: GEMINI_MODEL,
     config: {
       systemInstruction: `あなたは「${roomName}」の住人 ${avatarName} です。テーマ：${roomTopic}。
 あなたはこのテーマの熱心な実践者・愛好者です。
@@ -48,5 +48,8 @@ export async function POST(req: Request) {
     { ex: ROOM_CHAT_TTL },
   );
 
-  return NextResponse.json({ sessionId, message: firstMessage, avatarName });
+    return NextResponse.json({ sessionId, message: firstMessage, avatarName });
+  } catch (error) {
+    return serverConfigError(error);
+  }
 }

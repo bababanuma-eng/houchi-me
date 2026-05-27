@@ -1,10 +1,9 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { serverConfigError } from '@/lib/apiErrors';
+import { GEMINI_MODEL, getGemini } from '@/lib/gemini';
 import { getRedis } from '@/lib/redis';
 import type { EncounterSession } from '@/lib/redis';
-
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface EndRequest {
   sessionId: string;
@@ -53,8 +52,8 @@ hobbyDiscoveries の判定基準:
 - 確信が持てなければ空配列`;
 
   try {
-    const res = await genai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const res = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
       config: { responseMimeType: 'application/json' },
       contents: prompt,
     });
@@ -65,7 +64,8 @@ hobbyDiscoveries の判定基準:
 }
 
 export async function POST(req: Request) {
-  const { sessionId } = (await req.json()) as EndRequest;
+  try {
+    const { sessionId } = (await req.json()) as EndRequest;
 
   const raw = await getRedis().get<string>(`encounter:${sessionId}`);
   if (!raw) {
@@ -83,7 +83,6 @@ export async function POST(req: Request) {
 
   if (supabaseUrl && serviceRoleKey && session.history.length > 1) {
     const summary = await generateSummary(session);
-    console.log('[encounter/summary]', JSON.stringify(summary));
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // 会話ログ + 要約を保存
@@ -102,8 +101,7 @@ export async function POST(req: Request) {
         .select('likes')
         .eq('id', session.cloneId)
         .single();
-
-      console.log('[hobby] select:', { cloneData, selectError });
+      if (selectError) dbError = `${selectError.code}: ${selectError.message}`;
 
       if (cloneData) {
         const current = (cloneData.likes as string[]) ?? [];
@@ -113,7 +111,7 @@ export async function POST(req: Request) {
             .from('clones')
             .update({ likes: [...current, ...newOnes] })
             .eq('id', session.cloneId);
-          console.log('[hobby] update:', { newOnes, updateError });
+          if (updateError) dbError = `${updateError.code}: ${updateError.message}`;
           if (!updateError) hobbyDiscoveries = newOnes;
         }
       }
@@ -122,5 +120,8 @@ export async function POST(req: Request) {
 
   await getRedis().del(`encounter:${sessionId}`);
 
-  return NextResponse.json({ ok: true, dbError, cloneId: session.cloneId, hobbyDiscoveries });
+    return NextResponse.json({ ok: true, dbError, cloneId: session.cloneId, hobbyDiscoveries });
+  } catch (error) {
+    return serverConfigError(error);
+  }
 }

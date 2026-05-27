@@ -38,7 +38,7 @@ export default function Avatar({
     groupRef.current.position.lerp(position, 0.06);
     // smooth rotate
     const cur = groupRef.current.rotation.y;
-    let target = rotationY;
+    const target = rotationY;
     let diff = target - cur;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;

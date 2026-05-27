@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/refs, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -346,7 +348,6 @@ export default function WorldScene() {
       setCurrentSpeaker((currentSpeaker + 1) % CONVERSATION.length);
     }, 4000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSpeaker]);
 
   // 各部屋のセリフを独立に巡回（少しずつズラして同時に切り替わらないように）

@@ -1,4 +1,4 @@
-# Curio Meet 開発ルール（team-05）
+# 放置Me 開発ルール（team-05）
 
 ハッカソン 3 日間向けの最小ルール。迷ったら **plan.md のタスク ID** を基準にする。
 
@@ -13,13 +13,13 @@ git checkout main
 git pull origin main
 ```
 
-- [ ] [plan.md](./plan.md) で担当タスク（`MVP-xxx`）を確認する
+- [ ] [plan.md](./plan.md) で担当タスク（`HO-xxx`）を確認する
 - [ ] **LINE で担当宣言**（下記テンプレ）してから着手する
 
 ```
-【担当】MVP-301 reserve-experience
+【担当】HO-113 clone-chat Edge Function
 【担当者】@名前
-【ブランチ】feat/mvp-301-reserve-experience
+【ブランチ】feat/ho-113-clone-chat
 【目安】Day1 午後まで
 ```
 
@@ -43,15 +43,15 @@ git pull origin main
 
 | type | 用途 | 例 |
 |------|------|-----|
-| `feat` | 機能追加 | `feat/mvp-203-home-feed-supabase` |
-| `fix` / `bugfix` | バグ修正 | `fix/mvp-302-reserve-double-submit` |
+| `feat` | 機能追加 | `feat/ho-113-clone-chat` |
+| `fix` / `bugfix` | バグ修正 | `fix/ho-706-llm-error-ui` |
 | `hotfix` | 本番デモ URL の緊急修正 | `hotfix/vercel-build-error` |
 | `docs` | ドキュメント | `docs/mvp-006-readme-demo-url` |
 | `refactor` | 挙動を変えない整理 | `refactor/extract-reserve-hook` |
 | `test` | テスト | `test/mvp-301-reserve-function` |
 | `style` | 見た目・整形のみ | `style/profile-tab-spacing` |
 | `perf` | パフォーマンス | `perf/feed-scroll` |
-| `chore` | 雑務・依存更新 | `chore/deps-vite` |
+| `chore` | 雑務・依存更新 | `chore/deps-next` |
 | `ci` | CI 設定 | `ci/github-actions-build` |
 | `build` | ビルド設定 | `build/vercel-config` |
 | `release` | リリース・提出準備 | `release/day3-submission` |
@@ -61,7 +61,7 @@ git pull origin main
 - `feat/front-...` … 画面・コンポーネント
 - `feat/back-...` … Supabase / Edge Functions / スキーマ
 
-例: `feat/front-mvp-205-post-screen-db`
+例: `feat/front-ho-704-topic-chat-ui`
 
 ---
 
@@ -76,14 +76,14 @@ git pull origin main
 ### 2.2 コミットメッセージ（推奨）
 
 ```
-<type>: <何をしたか> (MVP-xxx)
+<type>: <何をしたか> (HO-xxx)
 ```
 
 例:
 
 ```
-feat: Home フィードを Supabase 取得に変更 (MVP-203)
-fix: 二重予約を Edge Function で拒否 (MVP-303)
+feat: clone-chat を Edge Function 経由に変更 (HO-113)
+fix: LLM エラー時の再試行 UI を追加 (HO-706)
 ```
 
 ### 2.3 PR 前のセルフチェック
@@ -108,14 +108,14 @@ npm run build # エラーが出ないこと
 ### 3.1 PR タイトル
 
 ```
-[MVP-203] feat: Home フィードを Supabase 連携
+[HO-113] feat: clone-chat を Supabase 連携
 ```
 
 ### 3.2 PR 本文（コピペ用）
 
 ```markdown
 ## タスク
-- plan.md: MVP-xxx（チェック済み）
+- plan.md: HO-xxx（チェック済み）
 
 ## 変更内容
 - （箇条書き 2〜5 行）
@@ -168,7 +168,7 @@ npm run build # エラーが出ないこと
 **困ったとき**
 
 ```
-【ブロッカー】MVP-301
+【ブロッカー】HO-113
 【状況】Edge Function のデプロイで 403
 【試したこと】ログ確認、キー再設定
 【助けてほしいこと】Supabase 権限の確認
@@ -177,7 +177,7 @@ npm run build # エラーが出ないこと
 **PR 出したとき**
 
 ```
-【PR】MVP-203 Home Supabase 連携
+【PR】HO-113 clone-chat Supabase 連携
 https://github.com/.../pull/xx
 レビューお願いします
 ```

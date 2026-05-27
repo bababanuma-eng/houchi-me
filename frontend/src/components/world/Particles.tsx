@@ -4,6 +4,15 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
+function seededUnit(seed: number): number {
+  return (Math.sin(seed * 12.9898) * 43758.5453) % 1;
+}
+
+function seeded01(seed: number): number {
+  const value = seededUnit(seed);
+  return value < 0 ? value + 1 : value;
+}
+
 export default function Particles({ count = 220 }: { count?: number }) {
   const ref = useRef<THREE.Points>(null);
   const palette = useMemo(
@@ -21,16 +30,16 @@ export default function Particles({ count = 220 }: { count?: number }) {
     const colors = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      positions[i * 3 + 0] = (Math.random() - 0.5) * 20;
-      positions[i * 3 + 1] = Math.random() * 6 + 0.5;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
-      const c = palette[Math.floor(Math.random() * palette.length)];
+      positions[i * 3 + 0] = (seeded01(i * 8 + 1) - 0.5) * 20;
+      positions[i * 3 + 1] = seeded01(i * 8 + 2) * 6 + 0.5;
+      positions[i * 3 + 2] = (seeded01(i * 8 + 3) - 0.5) * 20;
+      const c = palette[Math.floor(seeded01(i * 8 + 4) * palette.length)];
       colors[i * 3 + 0] = c.r;
       colors[i * 3 + 1] = c.g;
       colors[i * 3 + 2] = c.b;
-      velocities[i * 3 + 0] = (Math.random() - 0.5) * 0.004;
-      velocities[i * 3 + 1] = 0.002 + Math.random() * 0.005;
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.004;
+      velocities[i * 3 + 0] = (seeded01(i * 8 + 5) - 0.5) * 0.004;
+      velocities[i * 3 + 1] = 0.002 + seeded01(i * 8 + 6) * 0.005;
+      velocities[i * 3 + 2] = (seeded01(i * 8 + 7) - 0.5) * 0.004;
     }
     return { positions, colors, velocities };
   }, [count, palette]);
@@ -46,8 +55,8 @@ export default function Particles({ count = 220 }: { count?: number }) {
       arr[i * 3 + 2] += velocities[i * 3 + 2];
       if (arr[i * 3 + 1] > 7) {
         arr[i * 3 + 1] = 0.4;
-        arr[i * 3 + 0] = (Math.random() - 0.5) * 20;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        arr[i * 3 + 0] = (seeded01(i * 8 + 101) - 0.5) * 20;
+        arr[i * 3 + 2] = (seeded01(i * 8 + 102) - 0.5) * 20;
       }
     }
     pos.needsUpdate = true;

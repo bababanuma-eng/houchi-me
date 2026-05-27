@@ -97,9 +97,9 @@ export default function ChatPanel() {
     const { message, fixedReply } = chatTrigger;
     setChatTrigger(null);
     setChatPanelOpen(true);
-    // 直接呼ぶ。setTimeout(...,0) を挟むと、setChatTrigger(null) によって
-    // useEffect の deps が変化 → cleanup で clearTimeout が走り、send が発火しない。
-    void send(message, fixedReply);
+    queueMicrotask(() => {
+      void send(message, fixedReply);
+    });
   }, [chatTrigger, setChatTrigger, setChatPanelOpen, send]);
 
   useEffect(() => {

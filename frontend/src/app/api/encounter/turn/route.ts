@@ -1,21 +1,21 @@
-import { GoogleGenAI } from '@google/genai';
+import { GEMINI_MODEL, getGemini } from '@/lib/gemini';
+import { serverConfigError } from '@/lib/apiErrors';
 import { ENCOUNTER_TTL, getRedis } from '@/lib/redis';
 import type { EncounterSession } from '@/lib/redis';
-
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface TurnRequest {
   sessionId: string;
 }
 
 export async function POST(req: Request) {
-  const { sessionId } = (await req.json()) as TurnRequest;
+  try {
+    const { sessionId } = (await req.json()) as TurnRequest;
 
-  const raw = await getRedis().get<string>(`encounter:${sessionId}`);
-  if (!raw) return new Response('Session not found', { status: 404 });
+    const raw = await getRedis().get<string>(`encounter:${sessionId}`);
+    if (!raw) return new Response('Session not found', { status: 404 });
 
-  const session: EncounterSession =
-    typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const session: EncounterSession =
+      typeof raw === 'string' ? JSON.parse(raw) : raw;
 
   const readable = new ReadableStream({
     async start(controller) {
@@ -26,8 +26,8 @@ export async function POST(req: Request) {
 
         // Phase 1: クローンの返答を生成
         // wild↔cloneのロールを入れ替えることで、Geminiがクローン視点で'model'返答を生成できるようにする
-        const cloneStream = await genai.models.generateContentStream({
-          model: 'gemini-2.5-flash',
+        const cloneStream = await getGemini().models.generateContentStream({
+          model: GEMINI_MODEL,
           config: {
             systemInstruction: `あなたは「叡智の図書館」を探索しているクローンAIです。
 以下のプロフィールを持つクローンとして、相手のクローンAIに自然に返答してください。
@@ -69,8 +69,8 @@ ${session.cloneContext}
             ? [{ role: 'user' as const, parts: [{ text: '（会話）' }] }, ...historyMapped]
             : historyMapped;
 
-        const wildStream = await genai.models.generateContentStream({
-          model: 'gemini-2.5-flash',
+        const wildStream = await getGemini().models.generateContentStream({
+          model: GEMINI_MODEL,
           config: {
             systemInstruction: `${session.avatarSystemInstruction}
 
@@ -121,11 +121,14 @@ ${session.cloneContext}
     },
   });
 
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
+  } catch (error) {
+    return serverConfigError(error);
+  }
 }

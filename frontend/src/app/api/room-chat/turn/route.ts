@@ -1,17 +1,17 @@
-import { GoogleGenAI } from '@google/genai';
+import { GEMINI_MODEL, getGemini } from '@/lib/gemini';
+import { serverConfigError } from '@/lib/apiErrors';
 import { ROOM_CHAT_TTL, getRedis } from '@/lib/redis';
 import type { RoomChatSession } from '@/lib/redis';
 
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export async function POST(req: Request) {
-  const { sessionId } = (await req.json()) as { sessionId: string };
+  try {
+    const { sessionId } = (await req.json()) as { sessionId: string };
 
-  const raw = await getRedis().get<string>(`room-chat:${sessionId}`);
-  if (!raw) return new Response('Session not found', { status: 404 });
+    const raw = await getRedis().get<string>(`room-chat:${sessionId}`);
+    if (!raw) return new Response('Session not found', { status: 404 });
 
-  const session: RoomChatSession =
-    typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const session: RoomChatSession =
+      typeof raw === 'string' ? JSON.parse(raw) : raw;
 
   const readable = new ReadableStream({
     async start(controller) {
@@ -19,8 +19,8 @@ export async function POST(req: Request) {
       try {
         // Phase 1: Mira（クローン）の返答を生成
         // history が 'model'（エージェント）始まりなのでロールを入れ替える
-        const miraStream = await genai.models.generateContentStream({
-          model: 'gemini-2.5-flash',
+        const miraStream = await getGemini().models.generateContentStream({
+          model: GEMINI_MODEL,
           config: {
             systemInstruction: `あなたは ${session.cloneName}（クローンAI）です。
 ${session.cloneContext}
@@ -57,8 +57,8 @@ ${session.cloneContext}
             ? [{ role: 'user' as const, parts: [{ text: '（会話）' }] }, ...historyMapped]
             : historyMapped;
 
-        const agentStream = await genai.models.generateContentStream({
-          model: 'gemini-2.5-flash',
+        const agentStream = await getGemini().models.generateContentStream({
+          model: GEMINI_MODEL,
           config: {
             systemInstruction: `あなたは「${session.roomName}」の住人 ${session.avatarName} です。テーマ：${session.roomTopic}。
 あなたはこのテーマの熱心な実践者・愛好者として、相手（${session.cloneName}）の発言を受けて自分の体験や知見を話してください。
@@ -104,11 +104,14 @@ ${session.cloneContext}
     },
   });
 
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
+  } catch (error) {
+    return serverConfigError(error);
+  }
 }

@@ -38,7 +38,9 @@ export default function EncounterOverlay() {
   });
 
   const runTurnRef = useRef<((sessionId: string) => Promise<void>) | null>(null);
-  runTurnRef.current = async (sessionId: string) => {
+
+  useEffect(() => {
+    runTurnRef.current = async (sessionId: string) => {
     if (runningRef.current || sessionIdRef.current !== sessionId) return;
 
     const {
@@ -57,7 +59,6 @@ export default function EncounterOverlay() {
           body: JSON.stringify({ sessionId }),
         });
         const result = await res.json();
-        console.log('[encounter/end]', result);
         applyHobbyDiscoveries(result.hobbyDiscoveries);
         endEncounter();
       }, END_DELAY_MS);
@@ -119,10 +120,13 @@ export default function EncounterOverlay() {
 
     if (sessionIdRef.current !== sessionId) return;
     timerRef.current = setTimeout(
-      () => runTurnRef.current?.(sessionId),
+      () => {
+        void runTurnRef.current?.(sessionId);
+      },
       TURN_DELAY_MS,
     );
-  };
+    };
+  }, []);
 
   useEffect(() => {
     if (!encounter?.sessionId) {
@@ -137,14 +141,16 @@ export default function EncounterOverlay() {
     turnCountRef.current = 0;
 
     timerRef.current = setTimeout(
-      () => runTurnRef.current?.(encounter.sessionId),
+      () => {
+        void runTurnRef.current?.(encounter.sessionId);
+      },
       TURN_DELAY_MS,
     );
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [encounter?.sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [encounter?.sessionId]);
 
   const handleEnd = async () => {
     if (!encounter) return;
@@ -156,7 +162,6 @@ export default function EncounterOverlay() {
       body: JSON.stringify({ sessionId: encounter.sessionId }),
     });
     const result = await res.json();
-    console.log('[encounter/end]', result);
     applyHobbyDiscoveries(result.hobbyDiscoveries);
     useAppStore.getState().endEncounter();
   };
@@ -166,6 +171,10 @@ export default function EncounterOverlay() {
   const wildColor = AVATAR_COLORS[encounter.avatarName] ?? DEFAULT_WILD_COLOR;
   const cloneColor = '#a378ff';
   const cloneName = clone?.name ?? 'クローン';
+  const completedTurns = Math.min(
+    MAX_TURNS,
+    Math.floor(encounter.messages.length / 2),
+  );
 
   return (
     <div className="pointer-events-auto" style={{ width: 'min(440px, calc(100% - 2rem))' }}>
@@ -252,7 +261,7 @@ export default function EncounterOverlay() {
           <div
             className="h-full transition-all duration-700"
             style={{
-              width: `${(turnCountRef.current / MAX_TURNS) * 100}%`,
+              width: `${(completedTurns / MAX_TURNS) * 100}%`,
               background: wildColor,
               boxShadow: `0 0 6px ${wildColor}`,
             }}
