@@ -47,7 +47,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Set frontend env
         run: |
@@ -56,6 +56,9 @@ jobs:
         env:
           SUPABASE_URL_SECRET: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_ANON_KEY_SECRET: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build Next.js app
         run: npm run build
@@ -66,5 +69,5 @@ jobs:
             echo "## CI Summary"
             echo "- App: frontend (Next.js)"
             echo "- Node.js: 22"
-            echo "- Checks: npm install, npm run build"
+            echo "- Checks: npm ci, npm run lint, npm run build"
           } >> "$GITHUB_STEP_SUMMARY"

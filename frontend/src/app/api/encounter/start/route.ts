@@ -1,12 +1,11 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildContext } from '@/lib/buildContext';
+import { serverConfigError } from '@/lib/apiErrors';
+import { GEMINI_MODEL, getGemini } from '@/lib/gemini';
 import { ENCOUNTER_TTL, getRedis } from '@/lib/redis';
 import { getWildAvatarProfile } from '@/lib/wildAvatarProfiles';
 import type { Clone, EncounterMemory, Topic } from '@/types';
-
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface StartRequest {
   clone: Clone;
@@ -15,8 +14,9 @@ interface StartRequest {
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as StartRequest;
-  const { clone, recentTopics, avatarName } = body;
+  try {
+    const body = (await req.json()) as StartRequest;
+    const { clone, recentTopics, avatarName } = body;
 
   const recentMemories: EncounterMemory[] = [];
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -55,8 +55,8 @@ ${context}
 
 会話を始めてください。`;
 
-  const response = await genai.models.generateContent({
-    model: 'gemini-2.5-flash',
+  const response = await getGemini().models.generateContent({
+    model: GEMINI_MODEL,
     contents: prompt,
   });
 
@@ -77,5 +77,8 @@ ${context}
     { ex: ENCOUNTER_TTL },
   );
 
-  return NextResponse.json({ sessionId, message: firstMessage, avatarName });
+    return NextResponse.json({ sessionId, message: firstMessage, avatarName });
+  } catch (error) {
+    return serverConfigError(error);
+  }
 }

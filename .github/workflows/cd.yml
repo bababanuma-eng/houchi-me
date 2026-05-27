@@ -42,7 +42,7 @@ jobs:
 
       - name: Install dependencies
         if: env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' && env.VERCEL_TOKEN != ''
-        run: npm install
+        run: npm ci
 
       - name: Set frontend env
         if: env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' && env.VERCEL_TOKEN != ''

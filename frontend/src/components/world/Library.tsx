@@ -4,6 +4,15 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
+function seededUnit(seed: number): number {
+  return (Math.sin(seed * 12.9898) * 43758.5453) % 1;
+}
+
+function seeded01(seed: number): number {
+  const value = seededUnit(seed);
+  return value < 0 ? value + 1 : value;
+}
+
 function Bookshelf({
   position,
   rotation = 0,
@@ -16,16 +25,19 @@ function Bookshelf({
     const palette = ['#a378ff', '#4ff5e7', '#ff6ec7', '#ffc774', '#74ffa8'];
     for (let row = 0; row < 4; row++) {
       let x = -1.4;
+      let bookIndex = 0;
       while (x < 1.4) {
-        const w = 0.06 + Math.random() * 0.08;
-        const h = 0.22 + Math.random() * 0.08;
+        const seed = row * 100 + bookIndex;
+        const w = 0.06 + seeded01(seed + 1) * 0.08;
+        const h = 0.22 + seeded01(seed + 2) * 0.08;
         arr.push({
           x: x + w / 2,
           y: 0.45 + row * 0.36,
           h,
-          color: palette[Math.floor(Math.random() * palette.length)],
+          color: palette[Math.floor(seeded01(seed + 3) * palette.length)],
         });
         x += w + 0.01;
+        bookIndex += 1;
       }
     }
     return arr;
@@ -169,9 +181,9 @@ function Stars() {
   const points = useMemo(() => {
     const positions = new Float32Array(400 * 3);
     for (let i = 0; i < 400; i++) {
-      const r = 25 + Math.random() * 10;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI * 0.5;
+      const r = 25 + seeded01(i * 3 + 1) * 10;
+      const theta = seeded01(i * 3 + 2) * Math.PI * 2;
+      const phi = seeded01(i * 3 + 3) * Math.PI * 0.5;
       positions[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = 6 + r * Math.cos(phi) * 0.5;
       positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta) - 5;

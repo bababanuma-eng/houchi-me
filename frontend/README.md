@@ -20,16 +20,11 @@ npm run dev
 
 - **クローン作成オンボーディング**（6ステップ・名前 / MBTI / 好み / 自己紹介 / 性格シフト / 探索タイプ）
 - **起動ローダー**（CLONE OS のブートシーケンス再現）
-- **3D 仮想世界**（叡智の図書館 / Mira・Sage・Echo の3クローン / 5ロケーション巡回 / 吹き出しによる会話）
-- **4種カメラモード**（追従 / 軌道 / 俯瞰 / シネマ）
-- **ミニマップ**（Canvas でリアルタイム描画 / 発話者リング）
-- **今日のTopic**（モックLLMが日替わりで生成 / 行動経路と関連概念）
-- **フィードバック**（気になる / 違う / もっと知りたい → syncRate 連動）
-- **クローンチャット**（ストリーミング表示の文字入力 / 提案チップ）
-- **左サイドバー**（クローン状態 / Vitals 3バー / NavTree / MiniMap）
-- **右パネル**（NowCard / 今日のタイムライン / 直近7日の Stats）
-- **上部 HUD**（座標 / 時刻 / パンくず / タブ切替）
-- **下部コマンドバー**（クローンへの自然言語指示 / クイックアクション）
+- **3D 仮想世界**（叡智の図書館 / Mira・Sage・Echo / 部屋住人 / 野良エージェントの自律歩行）
+- **カメラ・操作 HUD**（フォロー復帰、手動操作、遭遇イベント）
+- **趣味 / フレンド / プロフィール overlay**（TopBar から開閉）
+- **Topic / activity 生成**（LocalStorage フォールバック、Supabase 設定時は Edge Functions 経由）
+- **クローン / 部屋住人 / 野良エージェントチャット**（右下 ChatPanel）
 
 ## ディレクトリ構造
 
@@ -42,18 +37,20 @@ src/
 │  └ onboarding/page.tsx — 6ステップのクローン作成
 ├ components/
 │  ├ Loader.tsx
-│  ├ layout/             — AppShell / TopBar / Sidebar / RightPanel / CommandBar
-│  ├ sidebar/            — CloneStatusCard / Vitals / NavTree / MiniMap
-│  ├ panel/              — NowCard / Timeline / Stats
-│  ├ main/               — Breadcrumb / ViewTabs / HudCoord / CameraButtons / ActivityBadge / WorldStats
-│  ├ topic/TodayTopicView.tsx
-│  ├ chat/ChatView.tsx
-│  └ world/              — VirtualWorld / WorldScene / Library / Avatar / Particles / CameraRig / palettes
+│  ├ layout/             — AppShell / TopBar / TopBarNav
+│  ├ main/               — WorldHudMenu / control / conversation / chat entry
+│  ├ encounter/          — EncounterTrigger / EncounterOverlay
+│  ├ overlay/            — 趣味 / フレンド / プロフィール overlay
+│  ├ chat/               — ChatPanel
+│  └ world/              — VirtualWorld / WorldScene / Library / Avatar / Particles / RoomMarkers / palettes
 ├ lib/
-│  ├ storage.ts          — Storage インタフェース + LocalStorageImpl
-│  ├ clone-engine.ts     — CloneEngine インタフェース + LLMMockImpl
+│  ├ buildContext.ts     — LLM 入力用の文脈生成
+│  ├ storage.ts          — Storage インタフェース + LocalStorageImpl / SupabaseImpl
+│  ├ clone-engine.ts     — CloneEngine インタフェース + LLMMockImpl / SupabaseEdgeFunctionImpl
+│  ├ redis.ts / supabase.ts
 │  ├ store.ts            — Zustand のグローバル状態
-│  └ util.ts
+│  ├ util.ts
+│  └ wildAvatarProfiles.ts
 └ types/index.ts
 ```
 
@@ -71,9 +68,9 @@ export const engine: CloneEngine = new LLMMockImpl();
 
 ## 操作のヒント
 
-- ヘッダー右のタブで **ノート / ワールド / 対話** を切替
-- 「ワールド」では左に カメラ4種、ミニマップ（左サイドバー下）に3アバターの位置と発話者リングが出ます
-- 「ノート」で Topic にフィードバックを押すと右パネル Stats と Vitals が即時更新
+- ヘッダー中央のナビで **ハマっている趣味 / フレンド / プロフィール** のオーバーレイを開閉
+- 「ワールド」では HUD メニューからカメラ・操作モード・遭遇イベントを操作
+- 右下のチャットパネルで自分のクローン / 部屋の住人 / 野良エージェントと会話
 - リロードしても localStorage で永続化、`localStorage.clear()` でやり直し
 
 ## 次のステップ

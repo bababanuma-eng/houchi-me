@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { getActiveRooms } from '@/components/world/palettes';
-import type { Clone, Topic } from '@/types';
+import type { Topic } from '@/types';
 
 export default function TalkButton() {
   const controlMode = useAppStore((s) => s.controlMode);
